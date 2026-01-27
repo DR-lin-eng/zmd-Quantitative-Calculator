@@ -104,7 +104,7 @@ const i18n = {
   }
 };
 
-createApp({
+const app = createApp({
   setup() {
     const state = reactive({
       lang: "zh",
@@ -1591,4 +1591,14 @@ createApp({
       onDiagramWheel
     };
   }
-}).mount("#app");
+});
+
+// Wait for DOM and Vue to be fully ready before mounting
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    app.mount("#app");
+  });
+} else {
+  // DOM already loaded
+  app.mount("#app");
+}
