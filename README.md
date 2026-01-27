@@ -19,6 +19,28 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 Open `http://localhost:8000`.
 
+## Docker
+
+Build and run directly:
+
+```powershell
+docker build -t endfield-calc .
+docker run --rm -p 8000:8000 endfield-calc
+```
+
+Run the prebuilt image:
+
+```powershell
+docker pull ghcr.io/dr-lin-eng/zmd-quantitative-calculator:latest
+docker run --rm -p 8000:8000 ghcr.io/dr-lin-eng/zmd-quantitative-calculator:latest
+```
+
+Or with Compose:
+
+```powershell
+docker compose up --build
+```
+
 ## Usage
 
 - Map-only supply inputs are per minute. Output rates and fuel rates are also displayed per minute.
