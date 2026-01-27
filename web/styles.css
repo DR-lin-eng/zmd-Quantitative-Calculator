@@ -183,10 +183,6 @@ select:focus {
   min-width: 160px;
 }
 
-.target-row input[type="number"] {
-  flex: 0 0 110px;
-}
-
 .target-row .checkbox {
   flex: 0 0 auto;
   white-space: nowrap;
