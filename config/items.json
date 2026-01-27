@@ -1,0 +1,1999 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "plant_moss_seed_1",
+      "name": "Plant Moss Seed 1",
+      "name_zh": "荞花种子",
+      "category": "raw",
+      "map_only": true,
+      "icon": "https://placehold.co/64x64/9e6244/ffffff?text=PLAN",
+      "startup_only": true,
+      "recipes": [
+        {
+          "machine": "seedcol_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_moss_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_moss_1",
+      "name": "Plant Moss 1",
+      "name_zh": "荞花",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/605926/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "planter_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_seed_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_moss_powder_1",
+      "name": "Plant Moss Powder 1",
+      "name_zh": "荞花粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/ad6c66/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "grinder_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_moss_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_moss_enr_powder_1",
+      "name": "Plant Moss Enr Powder 1",
+      "name_zh": "细磨荞花粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/896361/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "thickener_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_powder_1",
+              "qty": 2
+            },
+            {
+              "item": "plant_moss_powder_3",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_moss_seed_3",
+      "name": "Plant Moss Seed 3",
+      "name_zh": "砂叶种子",
+      "category": "raw",
+      "map_only": true,
+      "icon": "https://placehold.co/64x64/856812/ffffff?text=PLAN",
+      "startup_only": true,
+      "recipes": [
+        {
+          "machine": "seedcol_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_moss_3",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_moss_3",
+      "name": "Plant Moss 3",
+      "name_zh": "砂叶",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/917729/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "planter_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_seed_3",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_moss_powder_3",
+      "name": "Plant Moss Powder 3",
+      "name_zh": "砂叶粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/9c7008/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "grinder_1",
+          "time_sec": 2,
+          "output_qty": 3,
+          "inputs": [
+            {
+              "item": "plant_moss_3",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_grass_seed_1",
+      "name": "Plant Grass Seed 1",
+      "name_zh": "锦草种子",
+      "category": "raw",
+      "map_only": true,
+      "icon": "https://placehold.co/64x64/979e75/ffffff?text=PLAN",
+      "startup_only": true,
+      "recipes": [
+        {
+          "machine": "seedcol_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_grass_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_grass_1",
+      "name": "Plant Grass 1",
+      "name_zh": "锦草",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/7a8462/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "planter_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "liquid_water",
+              "qty": 1
+            },
+            {
+              "item": "plant_grass_seed_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_grass_powder_1",
+      "name": "Plant Grass Powder 1",
+      "name_zh": "锦草粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/babca0/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "grinder_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_grass_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "liquid_plant_grass_1",
+      "name": "Liquid Plant Grass 1",
+      "name_zh": "锦草溶液",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/e4f6e3/ffffff?text=LIQU",
+      "recipes": [
+        {
+          "machine": "mix_pool_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "liquid_water",
+              "qty": 1
+            },
+            {
+              "item": "plant_grass_powder_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "carbon_mtl",
+      "name": "Carbon Mtl",
+      "name_zh": "碳块",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/3e4048/ffffff?text=CARB",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_1",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_2",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_3",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_grass_1",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_grass_2",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "carbon_powder",
+      "name": "Carbon Powder",
+      "name_zh": "碳粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/4c4c4c/ffffff?text=CARB",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_powder_1",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_powder_2",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_moss_powder_3",
+              "qty": 3
+            }
+          ]
+        },
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_grass_powder_1",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_grass_powder_2",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "grinder_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "carbon_mtl",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_moss_seed_2",
+      "name": "Plant Moss Seed 2",
+      "name_zh": "柑实种子",
+      "category": "raw",
+      "map_only": true,
+      "icon": "https://placehold.co/64x64/928029/ffffff?text=PLAN",
+      "startup_only": true,
+      "recipes": [
+        {
+          "machine": "seedcol_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_moss_2",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_moss_2",
+      "name": "Plant Moss 2",
+      "name_zh": "柑实",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/65681f/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "planter_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_seed_2",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_moss_powder_2",
+      "name": "Plant Moss Powder 2",
+      "name_zh": "柑实粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/d5c274/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "grinder_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_moss_2",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_moss_enr_powder_2",
+      "name": "Plant Moss Enr Powder 2",
+      "name_zh": "细磨柑实粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/90845b/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "thickener_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_powder_2",
+              "qty": 2
+            },
+            {
+              "item": "plant_moss_powder_3",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_bbflower_seed_1",
+      "name": "Plant Bbflower Seed 1",
+      "name_zh": "酮化树种",
+      "category": "raw",
+      "map_only": true,
+      "icon": "https://placehold.co/64x64/aca368/ffffff?text=PLAN",
+      "startup_only": true,
+      "recipes": [
+        {
+          "machine": "seedcol_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_bbflower_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_bbflower_1",
+      "name": "Plant Bbflower 1",
+      "name_zh": "酮化灌木",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/635c3e/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "planter_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_bbflower_seed_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_bbflower_powder_1",
+      "name": "Plant Bbflower Powder 1",
+      "name_zh": "酮化灌木粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/7c7436/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "grinder_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_bbflower_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_grass_seed_2",
+      "name": "Plant Grass Seed 2",
+      "name_zh": "芽针种子",
+      "category": "raw",
+      "map_only": true,
+      "icon": "https://placehold.co/64x64/9e7f6a/ffffff?text=PLAN",
+      "startup_only": true,
+      "recipes": [
+        {
+          "machine": "seedcol_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_grass_2",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_grass_2",
+      "name": "Plant Grass 2",
+      "name_zh": "芽针",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/5c5f4b/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "planter_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "liquid_water",
+              "qty": 1
+            },
+            {
+              "item": "plant_grass_seed_2",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plant_grass_powder_2",
+      "name": "Plant Grass Powder 2",
+      "name_zh": "芽针粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/b3907a/ffffff?text=PLAN",
+      "recipes": [
+        {
+          "machine": "grinder_1",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "plant_grass_2",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "liquid_plant_grass_2",
+      "name": "Liquid Plant Grass 2",
+      "name_zh": "芽针溶液",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/c2ed7c/ffffff?text=LIQU",
+      "recipes": [
+        {
+          "machine": "mix_pool_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "liquid_water",
+              "qty": 1
+            },
+            {
+              "item": "plant_grass_powder_2",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "carbon_enr_powder",
+      "name": "Carbon Enr Powder",
+      "name_zh": "致密碳粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/484848/ffffff?text=CARB",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_enr_powder_1",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_enr_powder_2",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "thickener_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "carbon_powder",
+              "qty": 2
+            },
+            {
+              "item": "plant_moss_powder_3",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "carbon_enr",
+      "name": "Carbon Enr",
+      "name_zh": "稳定碳块",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/484b53/ffffff?text=CARB",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "carbon_enr_powder",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "originium_ore",
+      "name": "Originium Ore",
+      "name_zh": "源矿",
+      "category": "raw",
+      "map_only": true,
+      "icon": "https://placehold.co/64x64/805f3c/ffffff?text=ORIG",
+      "recipes": []
+    },
+    {
+      "id": "crystal_shell",
+      "name": "Crystal Shell",
+      "name_zh": "晶体外壳",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/947543/ffffff?text=CRYS",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "originium_ore",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crystal_powder",
+      "name": "Crystal Powder",
+      "name_zh": "晶体外壳粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/6c431e/ffffff?text=CRYS",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "originium_powder",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crystal_enr_powder",
+      "name": "Crystal Enr Powder",
+      "name_zh": "致密晶体粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/9e6439/ffffff?text=CRYS",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "originium_enr_powder",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "thickener_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "crystal_powder",
+              "qty": 2
+            },
+            {
+              "item": "plant_moss_powder_3",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crystal_enr",
+      "name": "Crystal Enr",
+      "name_zh": "密制晶体",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/746937/ffffff?text=CRYS",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "crystal_enr_powder",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "originium_powder",
+      "name": "Originium Powder",
+      "name_zh": "源石粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/4d3c2b/ffffff?text=ORIG",
+      "recipes": [
+        {
+          "machine": "grinder_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "originium_ore",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "originium_enr_powder",
+      "name": "Originium Enr Powder",
+      "name_zh": "致密源石粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/76532f/ffffff?text=ORIG",
+      "recipes": [
+        {
+          "machine": "thickener_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "originium_powder",
+              "qty": 2
+            },
+            {
+              "item": "plant_moss_powder_3",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quartz_sand",
+      "name": "Quartz Sand",
+      "name_zh": "紫晶矿",
+      "category": "raw",
+      "map_only": true,
+      "icon": "https://placehold.co/64x64/5d486c/ffffff?text=QUAR",
+      "recipes": []
+    },
+    {
+      "id": "quartz_glass",
+      "name": "Quartz Glass",
+      "name_zh": "紫晶纤维",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/715f92/ffffff?text=QUAR",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "quartz_sand",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quartz_powder",
+      "name": "Quartz Powder",
+      "name_zh": "紫晶粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/62507b/ffffff?text=QUAR",
+      "recipes": [
+        {
+          "machine": "grinder_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "quartz_glass",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quartz_enr_powder",
+      "name": "Quartz Enr Powder",
+      "name_zh": "高晶粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/b1afc1/ffffff?text=QUAR",
+      "recipes": [
+        {
+          "machine": "thickener_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "plant_moss_powder_3",
+              "qty": 1
+            },
+            {
+              "item": "quartz_powder",
+              "qty": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quartz_enr",
+      "name": "Quartz Enr",
+      "name_zh": "高晶纤维",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/9998a5/ffffff?text=QUAR",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "quartz_enr_powder",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "glass_bottle",
+      "name": "Glass Bottle",
+      "name_zh": "紫晶质瓶",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/5c4c7d/ffffff?text=GLAS",
+      "recipes": [
+        {
+          "machine": "shaper_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "quartz_glass",
+              "qty": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "glass_enr_bottle",
+      "name": "Glass Enr Bottle",
+      "name_zh": "高晶质瓶",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/76758f/ffffff?text=GLAS",
+      "recipes": [
+        {
+          "machine": "shaper_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "quartz_enr",
+              "qty": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "glass_cmpt",
+      "name": "Glass Cmpt",
+      "name_zh": "紫晶零件",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/9294a1/ffffff?text=GLAS",
+      "recipes": [
+        {
+          "machine": "cmpt_mc_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "quartz_glass",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "glass_enr_cmpt",
+      "name": "Glass Enr Cmpt",
+      "name_zh": "高晶零件",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/969199/ffffff?text=GLAS",
+      "recipes": [
+        {
+          "machine": "cmpt_mc_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "quartz_enr",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron_ore",
+      "name": "Iron Ore",
+      "name_zh": "蓝铁矿",
+      "category": "raw",
+      "map_only": true,
+      "icon": "https://placehold.co/64x64/59708d/ffffff?text=IRON",
+      "recipes": []
+    },
+    {
+      "id": "iron_nugget",
+      "name": "Iron Nugget",
+      "name_zh": "蓝铁块",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/618095/ffffff?text=IRON",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_ore",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron_powder",
+      "name": "Iron Powder",
+      "name_zh": "蓝铁粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/36526a/ffffff?text=IRON",
+      "recipes": [
+        {
+          "machine": "grinder_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_nugget",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron_enr_powder",
+      "name": "Iron Enr Powder",
+      "name_zh": "致密蓝铁粉末",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/5b7e97/ffffff?text=IRON",
+      "recipes": [
+        {
+          "machine": "thickener_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_powder",
+              "qty": 2
+            },
+            {
+              "item": "plant_moss_powder_3",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron_enr",
+      "name": "Iron Enr",
+      "name_zh": "钢块",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/56829c/ffffff?text=IRON",
+      "recipes": [
+        {
+          "machine": "furnance_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_enr_powder",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron_bottle",
+      "name": "Iron Bottle",
+      "name_zh": "蓝铁瓶",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/3b597b/ffffff?text=IRON",
+      "recipes": [
+        {
+          "machine": "shaper_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_nugget",
+              "qty": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron_enr_bottle",
+      "name": "Iron Enr Bottle",
+      "name_zh": "钢质瓶",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/5b6d83/ffffff?text=IRON",
+      "recipes": [
+        {
+          "machine": "shaper_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_enr",
+              "qty": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron_cmpt",
+      "name": "Iron Cmpt",
+      "name_zh": "铁制零件",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/6e81a9/ffffff?text=IRON",
+      "recipes": [
+        {
+          "machine": "cmpt_mc_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_nugget",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron_enr_cmpt",
+      "name": "Iron Enr Cmpt",
+      "name_zh": "钢制零件",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/5e748d/ffffff?text=IRON",
+      "recipes": [
+        {
+          "machine": "cmpt_mc_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_enr",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron_bottle-liquid_water",
+      "name": "Iron Bottle Liquid Water",
+      "name_zh": "蓝铁瓶(清水)",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/44869e/ffffff?text=IRON",
+      "recipes": [
+        {
+          "machine": "filling_pd_mc_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_bottle",
+              "qty": 1
+            },
+            {
+              "item": "liquid_water",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron_bottle-liquid_plant_grass_1",
+      "name": "Iron Bottle Liquid Plant Grass 1",
+      "name_zh": "蓝铁瓶(锦草溶液)",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/7b909a/ffffff?text=IRON",
+      "recipes": [
+        {
+          "machine": "filling_pd_mc_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_bottle",
+              "qty": 1
+            },
+            {
+              "item": "liquid_plant_grass_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron_bottle-liquid_plant_grass_2",
+      "name": "Iron Bottle Liquid Plant Grass 2",
+      "name_zh": "蓝铁瓶(芽针溶液)",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/6c8c7a/ffffff?text=IRON",
+      "recipes": [
+        {
+          "machine": "filling_pd_mc_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_bottle",
+              "qty": 1
+            },
+            {
+              "item": "liquid_plant_grass_2",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "liquid_water",
+      "name": "Liquid Water",
+      "name_zh": "清水（白矿）",
+      "category": "raw",
+      "map_only": true,
+      "icon": "https://placehold.co/64x64/5ae5f9/ffffff?text=LIQU",
+      "recipes": []
+    },
+    {
+      "id": "liquid_xiranite",
+      "name": "Liquid Xiranite",
+      "name_zh": "液化息壤",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/467866/ffffff?text=LIQU",
+      "recipes": [
+        {
+          "machine": "mix_pool_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "liquid_water",
+              "qty": 1
+            },
+            {
+              "item": "xiranite_powder",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xiranite_powder",
+      "name": "Xiranite Powder",
+      "name_zh": "息壤",
+      "category": "intermediate",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/335246/ffffff?text=XIRA",
+      "recipes": [
+        {
+          "machine": "xiranite_oven_1",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "carbon_enr",
+              "qty": 2
+            },
+            {
+              "item": "liquid_water",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bottled_food_1",
+      "name": "Bottled Food 1",
+      "name_zh": "柑实罐头",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/7f847c/ffffff?text=BOTT",
+      "recipes": [
+        {
+          "machine": "filling_pd_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "glass_bottle",
+              "qty": 5
+            },
+            {
+              "item": "plant_moss_powder_2",
+              "qty": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bottled_food_2",
+      "name": "Bottled Food 2",
+      "name_zh": "优质柑实罐头",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/878c69/ffffff?text=BOTT",
+      "recipes": [
+        {
+          "machine": "filling_pd_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_bottle",
+              "qty": 10
+            },
+            {
+              "item": "plant_moss_powder_2",
+              "qty": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bottled_food_3",
+      "name": "Bottled Food 3",
+      "name_zh": "精选柑实罐头",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/838882/ffffff?text=BOTT",
+      "recipes": [
+        {
+          "machine": "filling_pd_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_enr_bottle",
+              "qty": 10
+            },
+            {
+              "item": "plant_moss_enr_powder_2",
+              "qty": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bottled_food_4",
+      "name": "Bottled Food 4",
+      "name_zh": "锦草软饮",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/526d71/ffffff?text=BOTT",
+      "recipes": [
+        {
+          "machine": "tools_asm_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_bottle-liquid_plant_grass_1",
+              "qty": 5
+            },
+            {
+              "item": "iron_cmpt",
+              "qty": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bottled_rec_hp_1",
+      "name": "Bottled Rec Hp 1",
+      "name_zh": "荞愈胶囊",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/b39497/ffffff?text=BOTT",
+      "recipes": [
+        {
+          "machine": "filling_pd_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "glass_bottle",
+              "qty": 5
+            },
+            {
+              "item": "plant_moss_powder_1",
+              "qty": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bottled_rec_hp_2",
+      "name": "Bottled Rec Hp 2",
+      "name_zh": "优质荞愈胶囊",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/bca2a2/ffffff?text=BOTT",
+      "recipes": [
+        {
+          "machine": "filling_pd_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_bottle",
+              "qty": 10
+            },
+            {
+              "item": "plant_moss_powder_1",
+              "qty": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bottled_rec_hp_3",
+      "name": "Bottled Rec Hp 3",
+      "name_zh": "精选荞愈胶囊",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/b5959c/ffffff?text=BOTT",
+      "recipes": [
+        {
+          "machine": "filling_pd_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_enr_bottle",
+              "qty": 10
+            },
+            {
+              "item": "plant_moss_enr_powder_1",
+              "qty": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bottled_rec_hp_4",
+      "name": "Bottled Rec Hp 4",
+      "name_zh": "芽针针剂",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/a69690/ffffff?text=BOTT",
+      "recipes": [
+        {
+          "machine": "tools_asm_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_bottle-liquid_plant_grass_2",
+              "qty": 5
+            },
+            {
+              "item": "iron_cmpt",
+              "qty": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "equip_script_1",
+      "name": "Equip Script 1",
+      "name_zh": "紫晶装备原件",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/a2a0b0/ffffff?text=EQUI",
+      "recipes": [
+        {
+          "machine": "winder_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "crystal_shell",
+              "qty": 5
+            },
+            {
+              "item": "quartz_glass",
+              "qty": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "equip_script_2",
+      "name": "Equip Script 2",
+      "name_zh": "蓝铁装备原件",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/8898bf/ffffff?text=EQUI",
+      "recipes": [
+        {
+          "machine": "winder_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "crystal_shell",
+              "qty": 10
+            },
+            {
+              "item": "iron_nugget",
+              "qty": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "equip_script_3",
+      "name": "Equip Script 3",
+      "name_zh": "高晶装备原件",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/a2a4b0/ffffff?text=EQUI",
+      "recipes": [
+        {
+          "machine": "winder_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "crystal_enr",
+              "qty": 10
+            },
+            {
+              "item": "quartz_enr",
+              "qty": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "equip_script_4",
+      "name": "Equip Script 4",
+      "name_zh": "息壤装备原件",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/5d5644/ffffff?text=EQUI",
+      "recipes": [
+        {
+          "machine": "winder_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "crystal_enr",
+              "qty": 10
+            },
+            {
+              "item": "xiranite_powder",
+              "qty": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proc_battery_1",
+      "name": "Proc Battery 1",
+      "name_zh": "低容谷地电池",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/9e9f99/ffffff?text=PROC",
+      "recipes": [
+        {
+          "machine": "tools_asm_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "glass_cmpt",
+              "qty": 5
+            },
+            {
+              "item": "originium_powder",
+              "qty": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proc_battery_2",
+      "name": "Proc Battery 2",
+      "name_zh": "中容谷地电池",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/9c999d/ffffff?text=PROC",
+      "recipes": [
+        {
+          "machine": "tools_asm_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_cmpt",
+              "qty": 10
+            },
+            {
+              "item": "originium_powder",
+              "qty": 15
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proc_battery_3",
+      "name": "Proc Battery 3",
+      "name_zh": "高容谷地电池",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/9e999c/ffffff?text=PROC",
+      "recipes": [
+        {
+          "machine": "tools_asm_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_enr_cmpt",
+              "qty": 10
+            },
+            {
+              "item": "originium_enr_powder",
+              "qty": 15
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proc_battery_4",
+      "name": "Proc Battery 4",
+      "name_zh": "低容武陵电池",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/6a8872/ffffff?text=PROC",
+      "recipes": [
+        {
+          "machine": "tools_asm_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "originium_enr_powder",
+              "qty": 15
+            },
+            {
+              "item": "xiranite_powder",
+              "qty": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proc_bomb_1",
+      "name": "Proc Bomb 1",
+      "name_zh": "工业爆炸物",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/8c7e7a/ffffff?text=PROC",
+      "recipes": [
+        {
+          "machine": "tools_asm_mc_1",
+          "time_sec": 10,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "glass_cmpt",
+              "qty": 5
+            },
+            {
+              "item": "plant_bbflower_powder_1",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tundra_coupon",
+      "name": "Tundra Coupon",
+      "name_zh": "谷地调度券",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/c5c8b4/ffffff?text=TUND",
+      "recipes": [
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "crystal_shell",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 2,
+          "output_qty": 2,
+          "inputs": [
+            {
+              "item": "glass_bottle",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "glass_cmpt",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "iron_cmpt",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 2,
+          "output_qty": 3,
+          "inputs": [
+            {
+              "item": "iron_enr_cmpt",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 10,
+          "output_qty": 10,
+          "inputs": [
+            {
+              "item": "bottled_food_1",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 10,
+          "output_qty": 27,
+          "inputs": [
+            {
+              "item": "bottled_food_2",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 10,
+          "output_qty": 70,
+          "inputs": [
+            {
+              "item": "bottled_food_3",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 10,
+          "output_qty": 10,
+          "inputs": [
+            {
+              "item": "bottled_rec_hp_1",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 10,
+          "output_qty": 27,
+          "inputs": [
+            {
+              "item": "bottled_rec_hp_2",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 10,
+          "output_qty": 70,
+          "inputs": [
+            {
+              "item": "bottled_rec_hp_3",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 10,
+          "output_qty": 16,
+          "inputs": [
+            {
+              "item": "proc_battery_1",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 10,
+          "output_qty": 30,
+          "inputs": [
+            {
+              "item": "proc_battery_2",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-tundra_coupon",
+          "time_sec": 10,
+          "output_qty": 70,
+          "inputs": [
+            {
+              "item": "proc_battery_3",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jinlong_coupon",
+      "name": "Jinlong Coupon",
+      "name_zh": "武陵调度券",
+      "category": "product",
+      "map_only": false,
+      "icon": "https://placehold.co/64x64/8ca0a0/ffffff?text=JINL",
+      "recipes": [
+        {
+          "machine": "settlement-jinlong_coupon",
+          "time_sec": 2,
+          "output_qty": 1,
+          "inputs": [
+            {
+              "item": "xiranite_powder",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-jinlong_coupon",
+          "time_sec": 10,
+          "output_qty": 16,
+          "inputs": [
+            {
+              "item": "bottled_food_4",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-jinlong_coupon",
+          "time_sec": 10,
+          "output_qty": 16,
+          "inputs": [
+            {
+              "item": "bottled_rec_hp_4",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "machine": "settlement-jinlong_coupon",
+          "time_sec": 10,
+          "output_qty": 25,
+          "inputs": [
+            {
+              "item": "proc_battery_4",
+              "qty": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

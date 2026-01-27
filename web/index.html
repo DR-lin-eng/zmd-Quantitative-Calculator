@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>终末地基建量化计算器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600&family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app" v-cloak>
+      <header class="header">
+        <div class="title-block">
+          <div class="eyebrow">{{ t('tagline') }}</div>
+          <h1>{{ t('title') }}</h1>
+          <p class="subtitle">{{ t('subtitle') }}</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn ghost" @click="toggleLang">{{ lang === 'zh' ? 'EN' : '中文' }}</button>
+          <label class="toggle">
+            <input type="checkbox" v-model="showIcons" />
+            <span>{{ t('showIcons') }}</span>
+          </label>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel controls">
+          <div class="section">
+            <h2>{{ t('settings') }}</h2>
+            <div class="field">
+              <label>{{ t('basePower') }}</label>
+              <input type="number" step="0.1" v-model="basePower" />
+            </div>
+            <div class="field">
+              <label>{{ t('generator') }}</label>
+              <select v-model="selectedGeneratorId" @change="updateFuel">
+                <option v-for="gen in generators" :key="gen.id" :value="gen.id">{{ displayGeneratorName(gen.id) }}</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>{{ t('generatorFuel') }}</label>
+              <select v-model="selectedFuelId">
+                <option v-for="fuel in generatorFuelOptions" :key="fuel" :value="fuel">{{ displayItemName(fuel) }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-header">
+              <h2>{{ t('supplies') }}</h2>
+              <span class="hint">{{ t('perSecond') }}</span>
+            </div>
+            <div class="list">
+              <div class="row" v-for="supply in supplies" :key="supply.itemId">
+                <div class="row-left">
+                  <img v-if="showIcons && supply.icon" :src="supply.icon" alt="" />
+                  <div class="row-label">{{ displayItemName(supply.itemId) }}</div>
+                </div>
+                <input type="number" step="0.1" v-model="supply.rate" />
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-header">
+              <h2>{{ t('targets') }}</h2>
+              <span class="hint">{{ t('priority') }}</span>
+            </div>
+            <div class="list">
+              <div class="target-row" v-for="(target, index) in targets" :key="target.uid">
+                <select v-model="target.itemId">
+                  <option v-for="item in craftableItems" :key="item.id" :value="item.id">{{ displayItemName(item.id) }}</option>
+                </select>
+                <input type="number" step="0.1" v-model="target.rate" :disabled="target.maximize" />
+                <label class="checkbox">
+                  <input type="checkbox" v-model="target.maximize" />
+                  <span>{{ t('maximize') }}</span>
+                </label>
+                <div class="target-actions">
+                  <button class="icon-btn" @click="moveTarget(index, -1)" :disabled="index === 0">↑</button>
+                  <button class="icon-btn" @click="moveTarget(index, 1)" :disabled="index === targets.length - 1">↓</button>
+                  <button class="icon-btn danger" @click="removeTarget(index)">✕</button>
+                </div>
+              </div>
+            </div>
+            <button class="btn" @click="addTarget">{{ t('addTarget') }}</button>
+          </div>
+
+          <div class="section actions">
+            <button class="btn primary" @click="recalculate">{{ t('calculate') }}</button>
+            <div class="hint">{{ t('calcHint') }}</div>
+          </div>
+        </section>
+
+        <section class="panel results">
+          <div v-if="!results" class="empty">{{ t('noResults') }}</div>
+
+          <template v-else>
+            <div class="section">
+              <h2>{{ t('summary') }}</h2>
+              <div class="card-grid">
+                <div class="card">
+                  <div class="card-title">{{ t('totalPower') }}</div>
+                  <div class="card-value">{{ formatNumber(results.totalPower) }}</div>
+                  <div class="card-sub">{{ t('basePower') }}: {{ formatNumber(results.basePower) }}</div>
+                </div>
+                <div class="card">
+                  <div class="card-title">{{ t('generators') }}</div>
+                  <div class="card-value">{{ results.generatorCount }}</div>
+                  <div class="card-sub">{{ t('powerPerGen') }}: {{ formatNumber(results.powerPerGenerator) }}</div>
+                </div>
+                <div class="card">
+                  <div class="card-title">{{ t('fuelRate') }}</div>
+                  <div class="card-value">{{ formatRatePerMinute(results.fuelRate) }}</div>
+                  <div class="card-sub">/min</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>{{ t('output') }}</h2>
+              <div class="chip-list">
+                <div class="chip" v-for="output in results.outputs" :key="output.itemId">
+                  <span>{{ displayItemName(output.itemId) }}</span>
+                  <strong>{{ formatRatePerMinute(output.rate) }} /min</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>{{ t('rawUsage') }}</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Used</th>
+                    <th>Available</th>
+                    <th>Util</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="raw in results.rawUsage" :key="raw.itemId">
+                    <td>{{ displayItemName(raw.itemId) }}</td>
+                    <td>{{ formatNumber(raw.used) }}</td>
+                    <td>{{ formatNumber(raw.available) }}</td>
+                    <td>{{ formatNumber(raw.utilization * 100) }}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="section">
+              <h2>{{ t('machines') }}</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Machine</th>
+                    <th>{{ t('machineCount') }}</th>
+                    <th>{{ t('kitSize') }}</th>
+                    <th>{{ t('kitCount') }}</th>
+                    <th>{{ t('totalPower') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="machine in results.machineTotals" :key="machine.machineId">
+                    <td>{{ displayMachineName(machine.machineId) }}</td>
+                    <td>{{ formatNumber(machine.count, 0) }}</td>
+                    <td>{{ machine.kitSize }}</td>
+                    <td>{{ machine.kitCount }}</td>
+                    <td>{{ formatNumber(machine.totalPower) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="section">
+              <h2>{{ t('machineRuns') }}</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Machine</th>
+                    <th>{{ t('outputRate') }}</th>
+                    <th>{{ t('machineCount') }}</th>
+                    <th>{{ t('beltOutputUtil') }}</th>
+                    <th>{{ t('beltInputUtil') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="run in results.machineRuns" :key="run.itemId + '-' + run.machineId + '-' + run.rate">
+                    <td>{{ displayItemName(run.itemId) }}</td>
+                    <td>{{ displayMachineName(run.machineId) }}</td>
+                    <td>{{ formatRatePerMinute(run.rate) }} /min</td>
+                    <td>{{ formatNumber(run.machineCount, 0) }}</td>
+                    <td :class="{ warn: run.outputUtil > 1 }">{{ formatNumber(run.outputUtil * 100) }}%</td>
+                    <td :class="{ warn: run.inputUtil > 1 }">{{ formatNumber(run.inputUtil * 100) }}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="section" v-if="warnings.length">
+              <h2>{{ t('warnings') }}</h2>
+              <ul class="warnings">
+                <li v-for="(warning, index) in warnings" :key="index">{{ warning }}</li>
+              </ul>
+            </div>
+
+            <div class="section">
+              <div class="diagram-shell" :class="{ fullscreen: diagramFullscreen }">
+                <div class="section-header diagram-header">
+                  <h2>{{ t('diagram') }}</h2>
+                  <div class="diagram-actions">
+                    <div class="segmented">
+                      <button
+                        class="seg-btn"
+                        :class="{ active: diagramOrientation === 'vertical' }"
+                        @click="setDiagramOrientation('vertical')"
+                      >
+                        {{ t('diagramVertical') }}
+                      </button>
+                      <button
+                        class="seg-btn"
+                        :class="{ active: diagramOrientation === 'horizontal' }"
+                        @click="setDiagramOrientation('horizontal')"
+                      >
+                        {{ t('diagramHorizontal') }}
+                      </button>
+                    </div>
+                    <button class="btn ghost" @click="toggleDiagramFullscreen">
+                      {{ diagramFullscreen ? t('diagramExitFullscreen') : t('diagramFullscreen') }}
+                    </button>
+                  </div>
+                </div>
+                <div
+                  class="diagram"
+                  v-if="results.graph"
+                  ref="diagramRef"
+                  @pointerdown="onDiagramPointerDown"
+                  @pointermove="onDiagramPointerMove"
+                  @pointerup="onDiagramPointerUp"
+                  @pointerleave="onDiagramPointerUp"
+                  @pointercancel="onDiagramPointerUp"
+                >
+                  <svg
+                    :viewBox="`0 0 ${results.graph.width} ${results.graph.height}`"
+                    :width="results.graph.width"
+                    :height="results.graph.height"
+                  >
+                    <g class="links">
+                      <path v-for="(link, index) in results.graph.links" :key="index" :d="link.path" />
+                    </g>
+                    <g class="nodes">
+                      <g v-for="node in results.graph.nodes" :key="node.id" class="node" :class="{ raw: node.isRaw }">
+                        <rect
+                          :x="node.x - results.graph.nodeSize.width / 2"
+                          :y="node.y - results.graph.nodeSize.height / 2"
+                          :width="results.graph.nodeSize.width"
+                          :height="results.graph.nodeSize.height"
+                          rx="16"
+                        />
+                        <image
+                          v-if="showIcons && node.icon"
+                          :href="node.icon"
+                          :x="node.x - results.graph.nodeSize.width / 2 + 12"
+                          :y="node.y - 18"
+                          width="36"
+                          height="36"
+                        />
+                        <text
+                          class="node-title"
+                          :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
+                          :y="node.y - 12"
+                        >
+                          {{ displayItemName(node.itemId) }}
+                        </text>
+                        <text
+                          class="node-sub"
+                          :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
+                          :y="node.y + 10"
+                        >
+                          {{ formatRatePerMinute(node.rate) }} /min
+                        </text>
+                        <text
+                          v-if="node.machineId"
+                          class="node-sub"
+                          :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
+                          :y="node.y + 30"
+                        >
+                          {{ displayMachineName(node.machineId) }}
+                        </text>
+                      </g>
+                    </g>
+                  </svg>
+                </div>
+                <div v-else class="empty">{{ t('noResults') }}</div>
+              </div>
+            </div>
+          </template>
+        </section>
+      </main>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
