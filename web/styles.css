@@ -331,17 +331,70 @@ td {
 .diagram {
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: #fff;
-  padding: 8px;
+  background-color: #fff;
+  background-image: linear-gradient(rgba(15, 118, 110, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 118, 110, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-attachment: local;
+  padding: 0;
   height: clamp(320px, 55vh, 620px);
-  overflow: auto;
+  overflow: hidden;
   cursor: grab;
   touch-action: none;
   min-height: 0;
+  position: relative;
+  width: 100%;
 }
 
 .diagram.dragging {
   cursor: grabbing;
+}
+
+.diagram-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.diagram-content svg {
+  display: block;
+  pointer-events: auto;
+}
+
+.diagram-exit-fullscreen {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 100;
+  display: none;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.diagram-exit-fullscreen:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.diagram-exit-fullscreen:active {
+  transform: translateY(0);
+}
+
+.diagram-shell.fullscreen .diagram-exit-fullscreen {
+  display: block;
 }
 
 .diagram-shell {
@@ -356,6 +409,19 @@ td {
   gap: 10px;
   align-items: center;
   justify-content: flex-end;
+}
+
+.zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zoom-label {
+  min-width: 52px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .diagram-header {
@@ -394,11 +460,20 @@ td {
   z-index: 50;
   background: var(--panel);
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .diagram-shell.fullscreen .diagram {
   flex: 1;
   height: auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.diagram-shell.fullscreen .diagram-actions {
+  flex-shrink: 0;
 }
 
 body.diagram-fullscreen {
@@ -487,5 +562,27 @@ body.diagram-fullscreen {
 
   .diagram-actions {
     justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .diagram-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .diagram {
+    height: clamp(240px, 40vh, 400px);
+  }
+
+  .diagram-shell.fullscreen {
+    padding: 12px;
+  }
+
+  .zoom-controls {
+    flex-wrap: nowrap;
+  }
+
+  .segmented {
+    flex-shrink: 0;
   }
 }

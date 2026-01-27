@@ -1,7 +1,10 @@
-const { createApp, reactive, computed, onMounted, toRefs, ref } = Vue;
+const { createApp, reactive, computed, onMounted, onBeforeUnmount, toRefs, ref } = Vue;
 
 const BELT_CAPACITY = 0.5;
 const EPS = 1e-9;
+const DIAGRAM_ZOOM_MIN = 0.25;
+const DIAGRAM_ZOOM_MAX = 3;
+const DIAGRAM_ZOOM_STEP = 0.1;
 
 const i18n = {
   zh: {
@@ -32,8 +35,13 @@ const i18n = {
     diagram: "生产流程图",
     diagramVertical: "竖屏",
     diagramHorizontal: "横屏",
+    diagramSummary: "概览",
+    diagramPrecise: "精确",
     diagramFullscreen: "全屏",
     diagramExitFullscreen: "退出全屏",
+    diagramZoomIn: "放大",
+    diagramZoomOut: "缩小",
+    diagramZoomReset: "重置视图",
     warnings: "提示",
     showIcons: "显示图标",
     noResults: "暂无结果",
@@ -72,8 +80,13 @@ const i18n = {
     diagram: "Process Map",
     diagramVertical: "Vertical",
     diagramHorizontal: "Horizontal",
+    diagramSummary: "Summary",
+    diagramPrecise: "Precise",
     diagramFullscreen: "Fullscreen",
     diagramExitFullscreen: "Exit Fullscreen",
+    diagramZoomIn: "Zoom In",
+    diagramZoomOut: "Zoom Out",
+    diagramZoomReset: "Reset View",
     warnings: "Warnings",
     showIcons: "Show Icons",
     noResults: "No results yet",
@@ -102,7 +115,9 @@ createApp({
       results: null,
       warnings: [],
       diagramFullscreen: false,
-      diagramOrientation: "vertical"
+      diagramOrientation: "vertical",
+      diagramMode: "summary",
+      diagramZoom: 1
     });
 
     let targetUid = 1;
@@ -114,8 +129,13 @@ createApp({
       startX: 0,
       startY: 0,
       scrollLeft: 0,
-      scrollTop: 0
+      scrollTop: 0,
+      pointerId: null
     };
+    const diagramTransform = reactive({
+      x: 0,
+      y: 0
+    });
 
     const itemsById = computed(() => {
       const map = {};
@@ -150,6 +170,8 @@ createApp({
       if (!gen || !gen.fuel_power) return [];
       return Object.keys(gen.fuel_power);
     });
+
+    const diagramZoomLabel = computed(() => Math.round(state.diagramZoom * 100));
 
     function t(key) {
       return (i18n[state.lang] && i18n[state.lang][key]) || key;
@@ -196,29 +218,148 @@ createApp({
       state.lang = state.lang === "zh" ? "en" : "zh";
     }
 
-    function toggleDiagramFullscreen() {
-      state.diagramFullscreen = !state.diagramFullscreen;
+    function setDiagramFullscreen(nextValue) {
+      state.diagramFullscreen = Boolean(nextValue);
       if (typeof document !== "undefined") {
         document.body.classList.toggle("diagram-fullscreen", state.diagramFullscreen);
+      }
+      if (!state.diagramFullscreen) {
+        stopDiagramDrag();
+      }
+    }
+
+    function toggleDiagramFullscreen() {
+      setDiagramFullscreen(!state.diagramFullscreen);
+    }
+
+    function updateDiagramGraph(options = {}) {
+      if (!state.results || !state.results.roots) return;
+      const graph = buildGraph(
+        state.results.roots,
+        itemsById.value,
+        machinesById.value,
+        state.diagramOrientation,
+        state.diagramMode
+      );
+      state.results.graph = graph;
+      if (options.resetView) {
+        resetDiagramView();
       }
     }
 
     function setDiagramOrientation(orientation) {
+      if (state.diagramOrientation === orientation) return;
       state.diagramOrientation = orientation;
-      if (state.results) {
-        recalculate();
+      updateDiagramGraph({ resetView: true });
+    }
+
+    function setDiagramMode(mode) {
+      if (state.diagramMode === mode) return;
+      state.diagramMode = mode;
+      updateDiagramGraph({ resetView: true });
+    }
+
+    function clampDiagramZoom(value) {
+      return Math.min(DIAGRAM_ZOOM_MAX, Math.max(DIAGRAM_ZOOM_MIN, value));
+    }
+
+    function applyDiagramZoom(value, anchor) {
+      const container = diagramRef.value;
+      const nextZoom = clampDiagramZoom(value);
+      if (!container) {
+        state.diagramZoom = nextZoom;
+        return;
       }
+      const prevZoom = state.diagramZoom;
+      if (Math.abs(prevZoom - nextZoom) < 0.0001) return;
+
+      const rect = container.getBoundingClientRect();
+      const anchorX = anchor && Number.isFinite(anchor.x) ? anchor.x : rect.width / 2;
+      const anchorY = anchor && Number.isFinite(anchor.y) ? anchor.y : rect.height / 2;
+
+      const worldX = (anchorX - diagramTransform.x) / prevZoom;
+      const worldY = (anchorY - diagramTransform.y) / prevZoom;
+
+      state.diagramZoom = nextZoom;
+
+      diagramTransform.x = anchorX - worldX * nextZoom;
+      diagramTransform.y = anchorY - worldY * nextZoom;
+    }
+
+    function zoomDiagramBy(delta, anchor) {
+      applyDiagramZoom(state.diagramZoom + delta, anchor);
+    }
+
+    function zoomIn() {
+      zoomDiagramBy(DIAGRAM_ZOOM_STEP);
+    }
+
+    function zoomOut() {
+      zoomDiagramBy(-DIAGRAM_ZOOM_STEP);
+    }
+
+    function resetDiagramView() {
+      const container = diagramRef.value;
+      state.diagramZoom = 1;
+      if (container && state.results && state.results.graph) {
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        const graphWidth = state.results.graph.width;
+        const graphHeight = state.results.graph.height;
+        diagramTransform.x = (containerWidth - graphWidth) / 2;
+        diagramTransform.y = (containerHeight - graphHeight) / 2;
+      } else {
+        diagramTransform.x = 0;
+        diagramTransform.y = 0;
+      }
+      if (container) {
+        requestAnimationFrame(() => {
+          container.scrollLeft = 0;
+          container.scrollTop = 0;
+        });
+      }
+    }
+
+    function onDiagramWheel(event) {
+      if (!state.results || !state.results.graph) return;
+      const container = diagramRef.value;
+      if (!container) return;
+      event.preventDefault();
+      const rect = container.getBoundingClientRect();
+      const anchor = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      };
+      const zoomFactor = Math.exp(-event.deltaY * 0.002);
+      applyDiagramZoom(state.diagramZoom * zoomFactor, anchor);
+    }
+
+    function stopDiagramDrag(pointerId) {
+      if (!diagramDrag.active) return;
+      const container = diagramRef.value;
+      if (container) {
+        container.classList.remove("dragging");
+        if (container.releasePointerCapture && diagramDrag.pointerId !== null) {
+          container.releasePointerCapture(diagramDrag.pointerId);
+        } else if (container.releasePointerCapture && pointerId !== undefined) {
+          container.releasePointerCapture(pointerId);
+        }
+      }
+      diagramDrag.active = false;
+      diagramDrag.pointerId = null;
     }
 
     function onDiagramPointerDown(event) {
       const container = diagramRef.value;
       if (!container) return;
+      if (event.target.closest('button, .btn, .icon-btn, .seg-btn')) return;
       if (event.pointerType === "mouse" && event.button !== 0) return;
       diagramDrag.active = true;
+      diagramDrag.pointerId = event.pointerId;
       diagramDrag.startX = event.clientX;
       diagramDrag.startY = event.clientY;
-      diagramDrag.scrollLeft = container.scrollLeft;
-      diagramDrag.scrollTop = container.scrollTop;
+      diagramDrag.scrollLeft = diagramTransform.x;
+      diagramDrag.scrollTop = diagramTransform.y;
       container.classList.add("dragging");
       if (container.setPointerCapture) {
         container.setPointerCapture(event.pointerId);
@@ -232,20 +373,18 @@ createApp({
       if (!container) return;
       const dx = event.clientX - diagramDrag.startX;
       const dy = event.clientY - diagramDrag.startY;
-      container.scrollLeft = diagramDrag.scrollLeft - dx;
-      container.scrollTop = diagramDrag.scrollTop - dy;
+      diagramTransform.x = diagramDrag.scrollLeft + dx;
+      diagramTransform.y = diagramDrag.scrollTop + dy;
     }
 
     function onDiagramPointerUp(event) {
-      if (!diagramDrag.active) return;
-      const container = diagramRef.value;
-      if (container) {
-        container.classList.remove("dragging");
-        if (container.releasePointerCapture) {
-          container.releasePointerCapture(event.pointerId);
-        }
+      stopDiagramDrag(event.pointerId);
+    }
+
+    function onWindowKeydown(event) {
+      if (event.key === "Escape" && state.diagramFullscreen) {
+        setDiagramFullscreen(false);
       }
-      diagramDrag.active = false;
     }
 
     function addTarget() {
@@ -968,7 +1107,7 @@ createApp({
         });
       }
 
-      const graph = buildGraph(roots, itemMap, machineMap, state.diagramOrientation);
+      const graph = buildGraph(roots, itemMap, machineMap, state.diagramOrientation, state.diagramMode);
 
       state.results = {
         basePower,
@@ -980,13 +1119,15 @@ createApp({
         rawUsage: rawUsageList,
         machineTotals: machineTotalsList,
         machineRuns,
-        graph
+        graph,
+        roots
       };
 
       state.warnings = warnings;
+      resetDiagramView();
     }
 
-    function buildGraph(roots, itemMap, machineMap, orientation = "vertical") {
+    function buildSummaryGraph(roots, itemMap, machineMap, orientation = "vertical") {
       if (!roots || roots.length === 0) {
         return null;
       }
@@ -1130,6 +1271,237 @@ createApp({
       };
     }
 
+    function buildPreciseGraph(roots, itemMap, machineMap, orientation = "vertical") {
+      if (!roots || roots.length === 0) {
+        return null;
+      }
+
+      const NODE_W = 180;
+      const NODE_H = 64;
+      const H_GAP = 32;
+      const V_GAP = 48;
+      const MARGIN = 40;
+      const horizontal = orientation === "horizontal";
+
+      const depthMap = new Map();
+
+      function assignDepth(node, depth) {
+        depthMap.set(node.id, depth);
+        for (const child of node.children || []) {
+          assignDepth(child, depth + 1);
+        }
+      }
+
+      for (const root of roots) {
+        assignDepth(root, 0);
+      }
+
+      const nodes = [];
+      const nodesByAggregate = new Map();
+      let maxDepth = 0;
+
+      function createNodes(node) {
+        const depth = depthMap.get(node.id) || 0;
+        maxDepth = Math.max(maxDepth, depth);
+        const item = itemMap[node.itemId] || {};
+        if (node.machineId && node.machineCount > 0 && node.rate > EPS) {
+          const perMachineRate = node.rate / node.machineCount;
+          const machineNodes = [];
+          for (let index = 0; index < node.machineCount; index += 1) {
+            const id = `m-${node.id}-${index + 1}`;
+            const machineNode = {
+              id,
+              x: 0,
+              y: 0,
+              depth,
+              itemId: node.itemId,
+              machineId: node.machineId,
+              rate: perMachineRate,
+              icon: item.icon || "",
+              isRaw: item.map_only,
+              machineIndex: index + 1,
+              machineTotal: node.machineCount
+            };
+            nodes.push(machineNode);
+            machineNodes.push(machineNode);
+          }
+          nodesByAggregate.set(node.id, machineNodes);
+        } else if (node.rate > EPS) {
+          const id = `r-${node.id}`;
+          const rawNode = {
+            id,
+            x: 0,
+            y: 0,
+            depth,
+            itemId: node.itemId,
+            machineId: null,
+            rate: node.rate,
+            icon: item.icon || "",
+            isRaw: true,
+            machineIndex: null,
+            machineTotal: null
+          };
+          nodes.push(rawNode);
+          nodesByAggregate.set(node.id, [rawNode]);
+        } else {
+          nodesByAggregate.set(node.id, []);
+        }
+
+        for (const child of node.children || []) {
+          createNodes(child);
+        }
+      }
+
+      for (const root of roots) {
+        createNodes(root);
+      }
+
+      const rawLinks = new Map();
+
+      function addLink(fromId, toId, weight) {
+        if (!fromId || !toId) return;
+        const key = `${fromId}|${toId}`;
+        const existing = rawLinks.get(key);
+        rawLinks.set(key, (existing || 0) + weight);
+      }
+
+      function connectNodes(node) {
+        const parentMachines = nodesByAggregate.get(node.id) || [];
+        const perMachineOutputRate = node.machineCount > 0 ? node.rate / node.machineCount : 0;
+
+        const children = node.children || [];
+        const inputSpecs = node.inputSpecs || [];
+
+        for (let index = 0; index < children.length; index += 1) {
+          const child = children[index];
+          const inputSpec = inputSpecs[index];
+          if (!inputSpec) continue;
+          const childMachines = nodesByAggregate.get(child.id) || [];
+          if (childMachines.length === 0 || parentMachines.length === 0) continue;
+
+          const perParentDemand = perMachineOutputRate * (inputSpec.qtyPerOutput || 0);
+          if (perParentDemand <= EPS) continue;
+
+          const childPerMachineSupply = child.machineCount > 0 ? child.rate / child.machineCount : child.rate;
+          if (childPerMachineSupply <= EPS) continue;
+
+          let childIndex = 0;
+          let remaining = childPerMachineSupply;
+
+          for (const parentMachine of parentMachines) {
+            let demand = perParentDemand;
+            while (demand > EPS && childIndex < childMachines.length) {
+              const take = Math.min(demand, remaining);
+              const childMachine = childMachines[childIndex];
+              addLink(parentMachine.id, childMachine.id, take);
+              demand -= take;
+              remaining -= take;
+              if (remaining <= EPS) {
+                childIndex += 1;
+                remaining = childPerMachineSupply;
+              }
+            }
+            if (childIndex >= childMachines.length) {
+              break;
+            }
+          }
+        }
+
+        for (const child of children) {
+          connectNodes(child);
+        }
+      }
+
+      for (const root of roots) {
+        connectNodes(root);
+      }
+
+      const levels = [];
+      for (let depth = 0; depth <= maxDepth; depth += 1) {
+        levels.push([]);
+      }
+      for (const node of nodes) {
+        const depth = node.depth || 0;
+        if (!levels[depth]) levels[depth] = [];
+        levels[depth].push(node);
+      }
+
+      const maxLevelSize = levels.reduce((max, level) => Math.max(max, level.length), 1);
+      const depthCount = Math.max(1, maxDepth + 1);
+
+      const totalSpan = horizontal
+        ? maxLevelSize * NODE_H + (maxLevelSize - 1) * V_GAP
+        : maxLevelSize * NODE_W + (maxLevelSize - 1) * H_GAP;
+
+      const width = horizontal
+        ? MARGIN * 2 + depthCount * NODE_W + (depthCount - 1) * H_GAP
+        : MARGIN * 2 + totalSpan;
+      const height = horizontal
+        ? MARGIN * 2 + totalSpan
+        : MARGIN * 2 + depthCount * NODE_H + (depthCount - 1) * V_GAP;
+
+      for (let depth = 0; depth < levels.length; depth += 1) {
+        const level = levels[depth];
+        if (level.length === 0) continue;
+        const levelSpan = horizontal
+          ? level.length * NODE_H + (level.length - 1) * V_GAP
+          : level.length * NODE_W + (level.length - 1) * H_GAP;
+        const offset = (totalSpan - levelSpan) / 2;
+
+        for (let index = 0; index < level.length; index += 1) {
+          const node = level[index];
+          if (horizontal) {
+            node.x = MARGIN + depth * (NODE_W + H_GAP) + NODE_W / 2;
+            node.y = MARGIN + offset + NODE_H / 2 + index * (NODE_H + V_GAP);
+          } else {
+            node.x = MARGIN + offset + NODE_W / 2 + index * (NODE_W + H_GAP);
+            node.y = MARGIN + depth * (NODE_H + V_GAP) + NODE_H / 2;
+          }
+        }
+      }
+
+      const nodeMap = {};
+      for (const node of nodes) {
+        nodeMap[node.id] = node;
+      }
+
+      const links = Array.from(rawLinks.keys()).map((key) => {
+        const [fromId, toId] = key.split("|");
+        const from = nodeMap[fromId];
+        const to = nodeMap[toId];
+        if (!from || !to) return null;
+        if (horizontal) {
+          const x1 = from.x + NODE_W / 2;
+          const y1 = from.y;
+          const x2 = to.x - NODE_W / 2;
+          const y2 = to.y;
+          const midX = (x1 + x2) / 2;
+          return { path: `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}` };
+        }
+        const x1 = from.x;
+        const y1 = from.y + NODE_H / 2;
+        const x2 = to.x;
+        const y2 = to.y - NODE_H / 2;
+        const midY = (y1 + y2) / 2;
+        return { path: `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}` };
+      }).filter(Boolean);
+
+      return {
+        width,
+        height,
+        nodeSize: { width: NODE_W, height: NODE_H },
+        nodes,
+        links
+      };
+    }
+
+    function buildGraph(roots, itemMap, machineMap, orientation = "vertical", mode = "summary") {
+      if (mode === "precise") {
+        return buildPreciseGraph(roots, itemMap, machineMap, orientation);
+      }
+      return buildSummaryGraph(roots, itemMap, machineMap, orientation);
+    }
+
     async function loadConfig() {
       try {
         const cacheBust = `v=${Date.now()}`;
@@ -1169,6 +1541,18 @@ createApp({
 
     onMounted(() => {
       loadConfig();
+      if (typeof window !== "undefined") {
+        window.addEventListener("keydown", onWindowKeydown);
+      }
+    });
+
+    onBeforeUnmount(() => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("keydown", onWindowKeydown);
+      }
+      if (typeof document !== "undefined") {
+        document.body.classList.remove("diagram-fullscreen");
+      }
     });
 
     return {
@@ -1187,12 +1571,19 @@ createApp({
       generatorFuelOptions,
       craftableItems,
       formatRatePerMinute,
+      diagramZoomLabel,
       diagramRef,
+      diagramTransform,
       toggleDiagramFullscreen,
+      setDiagramMode,
       setDiagramOrientation,
+      zoomIn,
+      zoomOut,
+      resetDiagramView,
       onDiagramPointerDown,
       onDiagramPointerMove,
-      onDiagramPointerUp
+      onDiagramPointerUp,
+      onDiagramWheel
     };
   }
 }).mount("#app");

@@ -221,6 +221,7 @@
                         class="seg-btn"
                         :class="{ active: diagramOrientation === 'vertical' }"
                         @click="setDiagramOrientation('vertical')"
+                        type="button"
                       >
                         {{ t('diagramVertical') }}
                       </button>
@@ -228,11 +229,26 @@
                         class="seg-btn"
                         :class="{ active: diagramOrientation === 'horizontal' }"
                         @click="setDiagramOrientation('horizontal')"
+                        type="button"
                       >
                         {{ t('diagramHorizontal') }}
                       </button>
                     </div>
-                    <button class="btn ghost" @click="toggleDiagramFullscreen">
+                    <div class="segmented">
+                      <button class="seg-btn" :class="{ active: diagramMode === 'summary' }" @click="setDiagramMode('summary')" type="button">
+                        {{ t('diagramSummary') }}
+                      </button>
+                      <button class="seg-btn" :class="{ active: diagramMode === 'precise' }" @click="setDiagramMode('precise')" type="button">
+                        {{ t('diagramPrecise') }}
+                      </button>
+                    </div>
+                    <div class="zoom-controls">
+                      <button class="icon-btn" type="button" @click="zoomOut" :aria-label="t('diagramZoomOut')">-</button>
+                      <span class="zoom-label">{{ diagramZoomLabel }}%</span>
+                      <button class="icon-btn" type="button" @click="zoomIn" :aria-label="t('diagramZoomIn')">+</button>
+                      <button class="btn ghost" type="button" @click="resetDiagramView">{{ t('diagramZoomReset') }}</button>
+                    </div>
+                    <button class="btn ghost" type="button" @click="toggleDiagramFullscreen">
                       {{ diagramFullscreen ? t('diagramExitFullscreen') : t('diagramFullscreen') }}
                     </button>
                   </div>
@@ -241,62 +257,73 @@
                   class="diagram"
                   v-if="results.graph"
                   ref="diagramRef"
+                  @wheel.prevent="onDiagramWheel"
                   @pointerdown="onDiagramPointerDown"
                   @pointermove="onDiagramPointerMove"
                   @pointerup="onDiagramPointerUp"
                   @pointerleave="onDiagramPointerUp"
                   @pointercancel="onDiagramPointerUp"
                 >
-                  <svg
-                    :viewBox="`0 0 ${results.graph.width} ${results.graph.height}`"
-                    :width="results.graph.width"
-                    :height="results.graph.height"
+                  <button class="diagram-exit-fullscreen" type="button" @click="toggleDiagramFullscreen">
+                    ✕ {{ t('diagramExitFullscreen') }}
+                  </button>
+                  <div
+                    class="diagram-content"
+                    :style="{
+                      transform: `translate(${diagramTransform.x}px, ${diagramTransform.y}px) scale(${diagramZoom})`
+                    }"
                   >
-                    <g class="links">
-                      <path v-for="(link, index) in results.graph.links" :key="index" :d="link.path" />
-                    </g>
-                    <g class="nodes">
-                      <g v-for="node in results.graph.nodes" :key="node.id" class="node" :class="{ raw: node.isRaw }">
-                        <rect
-                          :x="node.x - results.graph.nodeSize.width / 2"
-                          :y="node.y - results.graph.nodeSize.height / 2"
-                          :width="results.graph.nodeSize.width"
-                          :height="results.graph.nodeSize.height"
-                          rx="16"
-                        />
-                        <image
-                          v-if="showIcons && node.icon"
-                          :href="node.icon"
-                          :x="node.x - results.graph.nodeSize.width / 2 + 12"
-                          :y="node.y - 18"
-                          width="36"
-                          height="36"
-                        />
-                        <text
-                          class="node-title"
-                          :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
-                          :y="node.y - 12"
-                        >
-                          {{ displayItemName(node.itemId) }}
-                        </text>
-                        <text
-                          class="node-sub"
-                          :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
-                          :y="node.y + 10"
-                        >
-                          {{ formatRatePerMinute(node.rate) }} /min
-                        </text>
-                        <text
-                          v-if="node.machineId"
-                          class="node-sub"
-                          :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
-                          :y="node.y + 30"
-                        >
-                          {{ displayMachineName(node.machineId) }}
-                        </text>
+                    <svg
+                      :viewBox="`0 0 ${results.graph.width} ${results.graph.height}`"
+                      :width="results.graph.width"
+                      :height="results.graph.height"
+                    >
+                      <g class="links">
+                        <path v-for="(link, index) in results.graph.links" :key="index" :d="link.path" />
                       </g>
-                    </g>
-                  </svg>
+                      <g class="nodes">
+                        <g v-for="node in results.graph.nodes" :key="node.id" class="node" :class="{ raw: node.isRaw }">
+                          <rect
+                            :x="node.x - results.graph.nodeSize.width / 2"
+                            :y="node.y - results.graph.nodeSize.height / 2"
+                            :width="results.graph.nodeSize.width"
+                            :height="results.graph.nodeSize.height"
+                            rx="16"
+                          />
+                          <image
+                            v-if="showIcons && node.icon"
+                            :href="node.icon"
+                            :x="node.x - results.graph.nodeSize.width / 2 + 12"
+                            :y="node.y - 18"
+                            width="36"
+                            height="36"
+                          />
+                          <text
+                            class="node-title"
+                            :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
+                            :y="node.y - 12"
+                          >
+                            {{ displayItemName(node.itemId) }}
+                          </text>
+                          <text
+                            class="node-sub"
+                            :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
+                            :y="node.y + 10"
+                          >
+                            {{ formatRatePerMinute(node.rate) }} /min
+                          </text>
+                          <text
+                            v-if="node.machineId"
+                            class="node-sub"
+                            :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
+                            :y="node.y + 30"
+                          >
+                            {{ displayMachineName(node.machineId) }}<tspan v-if="node.machineIndex"> #{{ node.machineIndex }}/{{ node.machineTotal }}</tspan>
+                          </text>
+                        </g>
+                      </g>
+                    </svg>
+                  </div>
                 </div>
                 <div v-else class="empty">{{ t('noResults') }}</div>
               </div>
