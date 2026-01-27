@@ -1,3 +1,8 @@
+// Verify Vue is loaded
+if (typeof Vue === 'undefined') {
+  throw new Error('Vue is not loaded. Please check your internet connection.');
+}
+
 const { createApp, reactive, computed, onMounted, onBeforeUnmount, toRefs, ref } = Vue;
 
 const BELT_CAPACITY = 0.5;

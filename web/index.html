@@ -333,7 +333,22 @@
       </main>
     </div>
 
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <!-- Try CDN first, fallback to local -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js" crossorigin="anonymous"></script>
+    <script>
+      // Fallback to local Vue if CDN fails
+      if (typeof Vue === 'undefined') {
+        document.write('<script src="vue.global.prod.js"><\/script>');
+      }
+    </script>
+    <script>
+      // Final check - show error if Vue still not loaded
+      window.addEventListener('DOMContentLoaded', function() {
+        if (typeof Vue === 'undefined') {
+          document.body.innerHTML = '<div style="padding: 20px; color: red; font-family: sans-serif;"><h2>Error: Vue.js Failed to Load</h2><p>The application requires Vue.js to run. Please check:</p><ul><li>Your internet connection</li><li>Firewall or ad-blocker settings</li><li>Server configuration</li></ul><p>Try refreshing the page or contact support.</p></div>';
+        }
+      });
+    </script>
     <script src="app.js"></script>
   </body>
 </html>
