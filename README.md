@@ -32,7 +32,7 @@ Run the prebuilt image:
 
 ```powershell
 docker pull ghcr.io/dr-lin-eng/zmd-quantitative-calculator:latest
-docker run --rm -p 8000:8000 ghcr.io/dr-lin-eng/zmd-quantitative-calculator:latest
+docker run -d --rm -p 18300:8000 ghcr.io/dr-lin-eng/zmd-quantitative-calculator:latest
 ```
 
 Or with Compose:
