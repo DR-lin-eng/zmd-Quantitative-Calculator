@@ -7,7 +7,7 @@ const { createApp, reactive, computed, onMounted, onBeforeUnmount, toRefs, ref }
 
 const BELT_CAPACITY = 0.5;
 const EPS = 1e-9;
-const DIAGRAM_ZOOM_MIN = 0.25;
+const DIAGRAM_ZOOM_MIN = 0.02;
 const DIAGRAM_ZOOM_MAX = 3;
 const DIAGRAM_ZOOM_STEP = 0.1;
 
@@ -38,15 +38,21 @@ const i18n = {
     machines: "机器汇总",
     machineRuns: "机器明细",
     diagram: "生产流程图",
-    diagramVertical: "竖屏",
-    diagramHorizontal: "横屏",
     diagramSummary: "概览",
-    diagramPrecise: "精确",
     diagramFullscreen: "全屏",
     diagramExitFullscreen: "退出全屏",
     diagramZoomIn: "放大",
     diagramZoomOut: "缩小",
     diagramZoomReset: "重置视图",
+    diagramArea1: "生产区域1",
+    diagramArea2: "生产区域2",
+    diagramRaw: "原材料",
+    diagramFinal: "最终产品",
+    diagramTotalCapacity: "总产能",
+    diagramTotalSupply: "总供给",
+    diagramTotalOutput: "最终产出",
+    diagramBottleneck: "瓶颈",
+    diagramNoBottleneck: "无",
     warnings: "提示",
     showIcons: "显示图标",
     noResults: "暂无结果",
@@ -83,15 +89,21 @@ const i18n = {
     machines: "Machine Totals",
     machineRuns: "Machine Details",
     diagram: "Process Map",
-    diagramVertical: "Vertical",
-    diagramHorizontal: "Horizontal",
     diagramSummary: "Summary",
-    diagramPrecise: "Precise",
     diagramFullscreen: "Fullscreen",
     diagramExitFullscreen: "Exit Fullscreen",
     diagramZoomIn: "Zoom In",
     diagramZoomOut: "Zoom Out",
     diagramZoomReset: "Reset View",
+    diagramArea1: "Area 1",
+    diagramArea2: "Area 2",
+    diagramRaw: "Raw Materials",
+    diagramFinal: "Final Products",
+    diagramTotalCapacity: "Total Capacity",
+    diagramTotalSupply: "Total Supply",
+    diagramTotalOutput: "Final Output",
+    diagramBottleneck: "Bottleneck",
+    diagramNoBottleneck: "None",
     warnings: "Warnings",
     showIcons: "Show Icons",
     noResults: "No results yet",
@@ -121,7 +133,6 @@ const app = createApp({
       warnings: [],
       diagramFullscreen: false,
       diagramOrientation: "vertical",
-      diagramMode: "summary",
       diagramZoom: 1
     });
 
@@ -136,6 +147,12 @@ const app = createApp({
       scrollLeft: 0,
       scrollTop: 0,
       pointerId: null
+    };
+    const diagramPointers = new Map();
+    const diagramPinch = {
+      active: false,
+      startDist: 0,
+      startZoom: 1
     };
     const diagramTransform = reactive({
       x: 0,
@@ -219,8 +236,352 @@ const app = createApp({
       return (value * 60).toFixed(digits);
     }
 
+    function computeNodeUtilization(node, machineMap) {
+      if (!node || !node.machineId || !node.machineCount) {
+        return {
+          outputUtil: 0,
+          inputUtil: 0,
+          beltLimited: false,
+          outputPorts: 0,
+          inputPorts: 0,
+          perPortOutput: 0
+        };
+      }
+      const machine = machineMap[node.machineId];
+      const outputPorts = machine && machine.output_ports ? machine.output_ports : 1;
+      const inputPorts = machine && machine.input_ports ? machine.input_ports : (node.inputSpecs || []).length;
+      const perMachineOutput = node.machineCount > 0 ? node.rate / node.machineCount : 0;
+      const perPortOutput = outputPorts > 0 ? perMachineOutput / outputPorts : perMachineOutput;
+      const outputUtil = perPortOutput / BELT_CAPACITY;
+
+      let maxInputUtil = 0;
+      for (const input of node.inputSpecs || []) {
+        const inputRate = node.rate * input.qtyPerOutput;
+        const perMachine = node.machineCount > 0 ? inputRate / node.machineCount : 0;
+        const util = perMachine / BELT_CAPACITY;
+        maxInputUtil = Math.max(maxInputUtil, util);
+      }
+
+      const recipe = node.recipe;
+      const outputQty = recipe ? recipe.output_qty || 1 : 0;
+      const timeSec = recipe ? recipe.time_sec || 1 : 1;
+      const outputRate = outputQty > 0 && timeSec > 0 ? outputQty / timeSec : 0;
+      const beltLimited = perMachineOutput < outputRate - EPS;
+
+      return {
+        outputUtil,
+        inputUtil: maxInputUtil,
+        beltLimited,
+        outputPorts,
+        inputPorts,
+        perPortOutput
+      };
+    }
+
+    function isNodeBottleneck(util) {
+      if (!util) return false;
+      return util.outputUtil > 1 + EPS || util.inputUtil > 1 + EPS || util.beltLimited;
+    }
+
+    function indexNodes(roots) {
+      const nodeIndex = {};
+      const parentIndex = {};
+      const nodeDepth = {};
+      let maxDepth = 0;
+
+      function visit(node, depth, parentId) {
+        if (!node || !node.id) return;
+        nodeIndex[node.id] = node;
+        nodeDepth[node.id] = depth;
+        maxDepth = Math.max(maxDepth, depth);
+        if (parentId) {
+          if (!parentIndex[node.id]) parentIndex[node.id] = [];
+          parentIndex[node.id].push(parentId);
+        }
+        for (const child of node.children || []) {
+          visit(child, depth + 1, node.id);
+        }
+      }
+
+      for (const root of roots || []) {
+        visit(root, 0, "");
+      }
+
+      return { nodeIndex, parentIndex, nodeDepth, maxDepth };
+    }
+
+    function buildNodeUtilIndex(nodeIndex, machineMap) {
+      const utilIndex = {};
+      for (const id of Object.keys(nodeIndex)) {
+        utilIndex[id] = computeNodeUtilization(nodeIndex[id], machineMap);
+      }
+      return utilIndex;
+    }
+
+    function buildAreaPlan(roots, nodeIndex, parentIndex, nodeDepth, itemMap, utilIndex) {
+      if (!roots || roots.length === 0) return null;
+
+      let maxNonRawDepth = 0;
+      for (const id of Object.keys(nodeIndex)) {
+        const node = nodeIndex[id];
+        const item = itemMap[node.itemId] || {};
+        if (!item.map_only) {
+          maxNonRawDepth = Math.max(maxNonRawDepth, nodeDepth[id] || 0);
+        }
+      }
+
+      const splitDepth = Math.max(1, Math.floor(maxNonRawDepth / 2));
+      const groupById = {};
+      const area1Ids = [];
+      const area2Ids = [];
+      let rawTotalRate = 0;
+
+      for (const id of Object.keys(nodeIndex)) {
+        const node = nodeIndex[id];
+        const item = itemMap[node.itemId] || {};
+        let group = "area2";
+        if (item.map_only) {
+          group = "raw";
+        } else if ((nodeDepth[id] || 0) <= splitDepth) {
+          group = "area2";
+        } else {
+          group = "area1";
+        }
+        groupById[id] = group;
+        if (group === "raw") {
+          rawTotalRate += node.rate || 0;
+        } else if (group === "area1") {
+          area1Ids.push(id);
+        } else {
+          area2Ids.push(id);
+        }
+      }
+
+      const area1RootIds = [];
+      let area1OutputRate = 0;
+      for (const id of area1Ids) {
+        const parents = parentIndex[id] || [];
+        const hasParentInArea1 = parents.some((parentId) => groupById[parentId] === "area1");
+        if (!hasParentInArea1) {
+          area1RootIds.push(id);
+          area1OutputRate += nodeIndex[id].rate || 0;
+        }
+      }
+
+      const area2RootIds = [];
+      let area2OutputRate = 0;
+      let finalTotalRate = 0;
+      for (const root of roots) {
+        finalTotalRate += root.rate || 0;
+        if (groupById[root.id] === "area2") {
+          area2RootIds.push(root.id);
+          area2OutputRate += root.rate || 0;
+        }
+      }
+
+      const area1Bottlenecks = area1Ids.filter((id) => isNodeBottleneck(utilIndex[id])).length;
+      const area2Bottlenecks = area2Ids.filter((id) => isNodeBottleneck(utilIndex[id])).length;
+
+      return {
+        splitDepth,
+        groupById,
+        area1Ids,
+        area2Ids,
+        area1RootIds,
+        area2RootIds,
+        rawTotalRate,
+        finalTotalRate,
+        area1OutputRate,
+        area2OutputRate,
+        area1Bottlenecks,
+        area2Bottlenecks
+      };
+    }
+
+    function makeBoundaryNode(sourceNode, itemMap, boundaryCounter) {
+      const id = `b${boundaryCounter.value++}`;
+      return {
+        id,
+        itemId: sourceNode.itemId,
+        rate: sourceNode.rate,
+        machineId: null,
+        machineCount: 0,
+        inputSpecs: [],
+        seedLoops: [],
+        recipe: null,
+        children: [],
+        isBoundary: true
+      };
+    }
+
+    function cloneAreaNode(node, areaId, areaPlan, itemMap, boundaryCounter) {
+      if (!node) return null;
+      const clone = {
+        id: node.id,
+        itemId: node.itemId,
+        rate: node.rate,
+        machineId: node.machineId,
+        machineCount: node.machineCount,
+        inputSpecs: node.inputSpecs || [],
+        seedLoops: node.seedLoops || [],
+        recipe: node.recipe,
+        children: []
+      };
+      for (const child of node.children || []) {
+        const childGroup = areaPlan.groupById[child.id];
+        if (childGroup === areaId) {
+          const childClone = cloneAreaNode(child, areaId, areaPlan, itemMap, boundaryCounter);
+          if (childClone) clone.children.push(childClone);
+        } else {
+          clone.children.push(makeBoundaryNode(child, itemMap, boundaryCounter));
+        }
+      }
+      return clone;
+    }
+
+    function buildOverviewGraph(roots, itemMap, machineMap, orientation = "vertical", areaPlan) {
+      if (!areaPlan) return null;
+      const NODE_W = 220;
+      const NODE_H = 88;
+      const H_GAP = 120;
+      const V_GAP = 96;
+      const MARGIN = 40;
+      const horizontal = orientation === "horizontal";
+
+      const area1BottleneckText = areaPlan.area1Bottlenecks > 0
+        ? `${t("diagramBottleneck")}: ${areaPlan.area1Bottlenecks}`
+        : `${t("diagramBottleneck")}: ${t("diagramNoBottleneck")}`;
+      const area2BottleneckText = areaPlan.area2Bottlenecks > 0
+        ? `${t("diagramBottleneck")}: ${areaPlan.area2Bottlenecks}`
+        : `${t("diagramBottleneck")}: ${t("diagramNoBottleneck")}`;
+
+      const nodes = [
+        {
+          id: "overview-raw",
+          kind: "overview",
+          title: t("diagramRaw"),
+          subLines: [`${t("diagramTotalSupply")}: ${formatRatePerMinute(areaPlan.rawTotalRate)} /min`],
+          icon: ""
+        },
+        {
+          id: "overview-area1",
+          kind: "area",
+          areaId: "area1",
+          title: t("diagramArea1"),
+          subLines: [
+            `${t("diagramTotalCapacity")}: ${formatRatePerMinute(areaPlan.area1OutputRate)} /min`,
+            area1BottleneckText
+          ],
+          icon: "",
+          alert: areaPlan.area1Bottlenecks > 0
+        },
+        {
+          id: "overview-area2",
+          kind: "area",
+          areaId: "area2",
+          title: t("diagramArea2"),
+          subLines: [
+            `${t("diagramTotalCapacity")}: ${formatRatePerMinute(areaPlan.area2OutputRate)} /min`,
+            area2BottleneckText
+          ],
+          icon: "",
+          alert: areaPlan.area2Bottlenecks > 0
+        },
+        {
+          id: "overview-final",
+          kind: "overview",
+          title: t("diagramFinal"),
+          subLines: [`${t("diagramTotalOutput")}: ${formatRatePerMinute(areaPlan.finalTotalRate)} /min`],
+          icon: ""
+        }
+      ];
+
+      if (horizontal) {
+        for (let i = 0; i < nodes.length; i += 1) {
+          nodes[i].x = i * (NODE_W + H_GAP);
+          nodes[i].y = 0;
+        }
+      } else {
+        for (let i = 0; i < nodes.length; i += 1) {
+          nodes[i].x = 0;
+          nodes[i].y = i * (NODE_H + V_GAP);
+        }
+      }
+
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const node of nodes) {
+        minX = Math.min(minX, node.x - NODE_W / 2);
+        minY = Math.min(minY, node.y - NODE_H / 2);
+        maxX = Math.max(maxX, node.x + NODE_W / 2);
+        maxY = Math.max(maxY, node.y + NODE_H / 2);
+      }
+
+      const width = Math.max(1, maxX - minX + MARGIN * 2);
+      const height = Math.max(1, maxY - minY + MARGIN * 2);
+
+      for (const node of nodes) {
+        node.x = node.x - minX + MARGIN;
+        node.y = node.y - minY + MARGIN;
+      }
+
+      const links = [];
+      for (let i = 0; i < nodes.length - 1; i += 1) {
+        const from = nodes[i];
+        const to = nodes[i + 1];
+        if (horizontal) {
+          const x1 = from.x + NODE_W / 2;
+          const y1 = from.y;
+          const x2 = to.x - NODE_W / 2;
+          const y2 = to.y;
+          const midX = (x1 + x2) / 2;
+          links.push({ path: `M ${x1} ${y1} C ${midX} ${y1} ${midX} ${y2} ${x2} ${y2}` });
+        } else {
+          const x1 = from.x;
+          const y1 = from.y + NODE_H / 2;
+          const x2 = to.x;
+          const y2 = to.y - NODE_H / 2;
+          const midY = (y1 + y2) / 2;
+          links.push({ path: `M ${x1} ${y1} C ${x1} ${midY} ${x2} ${midY} ${x2} ${y2}` });
+        }
+      }
+
+      return {
+        width,
+        height,
+        nodeSize: { width: NODE_W, height: NODE_H },
+        nodes,
+        links
+      };
+    }
+
+    function buildAreaGraph(roots, itemMap, machineMap, orientation = "vertical", areaPlan, nodeIndex, areaId) {
+      if (!areaPlan || !nodeIndex || !areaId) return null;
+      const rootIds = areaId === "area1" ? areaPlan.area1RootIds : areaPlan.area2RootIds;
+      if (!rootIds || rootIds.length === 0) return null;
+      const boundaryCounter = { value: 1 };
+      const areaRoots = [];
+      for (const rootId of rootIds) {
+        const source = nodeIndex[rootId];
+        if (!source) continue;
+        const clone = cloneAreaNode(source, areaId, areaPlan, itemMap, boundaryCounter);
+        if (clone) areaRoots.push(clone);
+      }
+      if (areaRoots.length === 0) return null;
+      const graph = buildPreciseGraph(areaRoots, itemMap, machineMap, orientation);
+      if (graph && Array.isArray(graph.nodes)) {
+        for (const node of graph.nodes) {
+          node.clickable = !node.isBoundary && !node.isLoop;
+        }
+      }
+      return graph;
+    }
+
     function toggleLang() {
       state.lang = state.lang === "zh" ? "en" : "zh";
+      updateDiagramGraph();
     }
 
     function setDiagramFullscreen(nextValue) {
@@ -230,6 +591,13 @@ const app = createApp({
       }
       if (!state.diagramFullscreen) {
         stopDiagramDrag();
+      }
+      if (typeof requestAnimationFrame !== "undefined") {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resetDiagramView();
+          });
+        });
       }
     }
 
@@ -244,7 +612,9 @@ const app = createApp({
         itemsById.value,
         machinesById.value,
         state.diagramOrientation,
-        state.diagramMode
+        {
+          areaPlan: state.results.areaPlan
+        }
       );
       state.results.graph = graph;
       if (options.resetView) {
@@ -255,12 +625,6 @@ const app = createApp({
     function setDiagramOrientation(orientation) {
       if (state.diagramOrientation === orientation) return;
       state.diagramOrientation = orientation;
-      updateDiagramGraph({ resetView: true });
-    }
-
-    function setDiagramMode(mode) {
-      if (state.diagramMode === mode) return;
-      state.diagramMode = mode;
       updateDiagramGraph({ resetView: true });
     }
 
@@ -305,15 +669,23 @@ const app = createApp({
 
     function resetDiagramView() {
       const container = diagramRef.value;
-      state.diagramZoom = 1;
       if (container && state.results && state.results.graph) {
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
         const graphWidth = state.results.graph.width;
         const graphHeight = state.results.graph.height;
-        diagramTransform.x = (containerWidth - graphWidth) / 2;
-        diagramTransform.y = (containerHeight - graphHeight) / 2;
+        let nextZoom = 1;
+        if (graphWidth > 0 && graphHeight > 0 && containerWidth > 0 && containerHeight > 0) {
+          const fitScale = Math.min(containerWidth / graphWidth, containerHeight / graphHeight);
+          if (fitScale < 1) {
+            nextZoom = clampDiagramZoom(fitScale * 0.95);
+          }
+        }
+        state.diagramZoom = nextZoom;
+        diagramTransform.x = (containerWidth - graphWidth * nextZoom) / 2;
+        diagramTransform.y = (containerHeight - graphHeight * nextZoom) / 2;
       } else {
+        state.diagramZoom = 1;
         diagramTransform.x = 0;
         diagramTransform.y = 0;
       }
@@ -359,6 +731,28 @@ const app = createApp({
       if (!container) return;
       if (event.target.closest('button, .btn, .icon-btn, .seg-btn')) return;
       if (event.pointerType === "mouse" && event.button !== 0) return;
+      diagramPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (container.setPointerCapture) {
+        container.setPointerCapture(event.pointerId);
+      }
+
+      if (diagramPointers.size >= 2) {
+        const pointers = Array.from(diagramPointers.values());
+        const p1 = pointers[0];
+        const p2 = pointers[1];
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        const dist = Math.hypot(dx, dy);
+        diagramPinch.active = true;
+        diagramPinch.startDist = dist || 1;
+        diagramPinch.startZoom = state.diagramZoom;
+        diagramDrag.active = false;
+        diagramDrag.pointerId = null;
+        container.classList.remove("dragging");
+        event.preventDefault();
+        return;
+      }
+
       diagramDrag.active = true;
       diagramDrag.pointerId = event.pointerId;
       diagramDrag.startX = event.clientX;
@@ -373,9 +767,30 @@ const app = createApp({
     }
 
     function onDiagramPointerMove(event) {
-      if (!diagramDrag.active) return;
       const container = diagramRef.value;
       if (!container) return;
+      if (diagramPointers.has(event.pointerId)) {
+        diagramPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      }
+
+      if (diagramPinch.active && diagramPointers.size >= 2) {
+        const pointers = Array.from(diagramPointers.values());
+        const p1 = pointers[0];
+        const p2 = pointers[1];
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        const dist = Math.hypot(dx, dy);
+        if (diagramPinch.startDist > 0) {
+          const scale = dist / diagramPinch.startDist;
+          const rect = container.getBoundingClientRect();
+          const centerX = (p1.x + p2.x) / 2 - rect.left;
+          const centerY = (p1.y + p2.y) / 2 - rect.top;
+          applyDiagramZoom(diagramPinch.startZoom * scale, { x: centerX, y: centerY });
+        }
+        return;
+      }
+
+      if (!diagramDrag.active) return;
       const dx = event.clientX - diagramDrag.startX;
       const dy = event.clientY - diagramDrag.startY;
       diagramTransform.x = diagramDrag.scrollLeft + dx;
@@ -383,7 +798,16 @@ const app = createApp({
     }
 
     function onDiagramPointerUp(event) {
-      stopDiagramDrag(event.pointerId);
+      if (diagramPointers.has(event.pointerId)) {
+        diagramPointers.delete(event.pointerId);
+      }
+      if (diagramPinch.active && diagramPointers.size < 2) {
+        diagramPinch.active = false;
+        diagramPinch.startDist = 0;
+      }
+      if (diagramDrag.active && diagramDrag.pointerId === event.pointerId) {
+        stopDiagramDrag(event.pointerId);
+      }
     }
 
     function onWindowKeydown(event) {
@@ -1077,6 +1501,9 @@ const app = createApp({
       }
 
       const { machineTotalsList, machineRuns } = collectMachineStats(roots);
+      const { nodeIndex, parentIndex, nodeDepth } = indexNodes(roots);
+      const utilIndex = buildNodeUtilIndex(nodeIndex, machineMap);
+      const areaPlan = buildAreaPlan(roots, nodeIndex, parentIndex, nodeDepth, itemMap, utilIndex);
 
       const totalMachinePower = machineTotalsList.reduce((sum, entry) => sum + entry.totalPower, 0);
       const basePower = Number.isFinite(parseFloat(state.basePower)) ? parseFloat(state.basePower) : 0;
@@ -1112,7 +1539,15 @@ const app = createApp({
         });
       }
 
-      const graph = buildGraph(roots, itemMap, machineMap, state.diagramOrientation, state.diagramMode);
+      const graph = buildGraph(
+        roots,
+        itemMap,
+        machineMap,
+        state.diagramOrientation,
+        {
+          areaPlan
+        }
+      );
 
       state.results = {
         basePower,
@@ -1125,7 +1560,8 @@ const app = createApp({
         machineTotals: machineTotalsList,
         machineRuns,
         graph,
-        roots
+        roots,
+        areaPlan
       };
 
       state.warnings = warnings;
@@ -1174,9 +1610,9 @@ const app = createApp({
         for (const child of node.children) {
           const childCenter = start + (child._leafSpan * leafSpanSize) / 2;
           if (horizontal) {
-            assign(child, x + depthSpanSize, childCenter);
+            assign(child, x - depthSpanSize, childCenter);
           } else {
-            assign(child, childCenter, y + depthSpanSize);
+            assign(child, childCenter, y - depthSpanSize);
           }
           start += child._leafSpan * leafSpanSize;
         }
@@ -1202,7 +1638,7 @@ const app = createApp({
         nodes.push(node);
         if (node.children) {
           for (const child of node.children) {
-            rawLinks.push({ from: node.id, to: child.id });
+            rawLinks.push({ from: child.id, to: node.id });
             flatten(child);
           }
         }
@@ -1283,9 +1719,10 @@ const app = createApp({
 
       const NODE_W = 180;
       const NODE_H = 64;
-      const H_GAP = 32;
-      const V_GAP = 48;
+      const H_GAP = 24;
+      const V_GAP = 32;
       const MARGIN = 40;
+      const LOOP_GAP = 36;
       const horizontal = orientation === "horizontal";
 
       const depthMap = new Map();
@@ -1301,56 +1738,217 @@ const app = createApp({
         assignDepth(root, 0);
       }
 
-      const nodes = [];
-      const nodesByAggregate = new Map();
-      let maxDepth = 0;
+      function gcd(a, b) {
+        let x = Math.abs(a);
+        let y = Math.abs(b);
+        while (y > 0) {
+          const temp = x % y;
+          x = y;
+          y = temp;
+        }
+        return x || 0;
+      }
 
-      function createNodes(node) {
-        const depth = depthMap.get(node.id) || 0;
-        maxDepth = Math.max(maxDepth, depth);
-        const item = itemMap[node.itemId] || {};
-        if (node.machineId && node.machineCount > 0 && node.rate > EPS) {
-          const perMachineRate = node.rate / node.machineCount;
-          const machineNodes = [];
-          for (let index = 0; index < node.machineCount; index += 1) {
-            const id = `m-${node.id}-${index + 1}`;
-            const machineNode = {
+      function estimateSeedMachineCount(node, loop) {
+        const seedsPerOutput = loop.seedsPerOutput || loop.seedPerOutput || 0;
+        if (seedsPerOutput <= EPS) return 0;
+        const seedEffectiveRate = loop.seedRecipeEffectiveRate || (loop.seedRecipe ? getOutputRate(loop.seedRecipe) : 0);
+        if (!Number.isFinite(seedEffectiveRate) || seedEffectiveRate <= EPS) return 0;
+        const seedRateDesired = node.rate * seedsPerOutput;
+        if (!Number.isFinite(seedRateDesired) || seedRateDesired <= EPS) return 0;
+        return Math.ceil(seedRateDesired / seedEffectiveRate - EPS);
+      }
+
+      function collectModuleCounts(node, counts) {
+        if (node.machineId && node.machineCount > 0) {
+          counts.push(node.machineCount);
+        }
+        for (const loop of node.seedLoops || []) {
+          const loopCount = estimateSeedMachineCount(node, loop);
+          if (loopCount > 0) {
+            counts.push(loopCount);
+          }
+        }
+        for (const child of node.children || []) {
+          collectModuleCounts(child, counts);
+        }
+      }
+
+      function computeModuleScale(root) {
+        const counts = [];
+        collectModuleCounts(root, counts);
+        let scale = 0;
+        for (const count of counts) {
+          scale = scale === 0 ? count : gcd(scale, count);
+          if (scale === 1) break;
+        }
+        return scale > 0 ? scale : 1;
+      }
+
+      function applyModuleScale(node, scale) {
+        const safeScale = scale > 0 ? scale : 1;
+        if (node.machineCount > 0) {
+          node._moduleCount = Math.max(1, Math.round(node.machineCount / safeScale));
+        } else {
+          node._moduleCount = 0;
+        }
+        node._moduleRate = Number.isFinite(node.rate) ? node.rate / safeScale : 0;
+        for (const child of node.children || []) {
+          applyModuleScale(child, safeScale);
+        }
+      }
+
+      for (const root of roots) {
+        const scale = computeModuleScale(root);
+        applyModuleScale(root, scale);
+      }
+
+      function computeLine(count, axis) {
+        if (count <= 0) {
+          return { count: 0, width: 0, height: 0, axis };
+        }
+        if (axis === "x") {
+          return {
+            count,
+            width: count * NODE_W + (count - 1) * H_GAP,
+            height: NODE_H,
+            axis
+          };
+        }
+        return {
+          count,
+          width: NODE_W,
+          height: count * NODE_H + (count - 1) * V_GAP,
+          axis
+        };
+      }
+
+      function layoutLine(lineNodes, layout, startX, startY) {
+        if (!lineNodes || lineNodes.length === 0) return;
+        for (let index = 0; index < lineNodes.length; index += 1) {
+          const node = lineNodes[index];
+          if (layout.axis === "x") {
+            node.x = startX + index * (NODE_W + H_GAP) + NODE_W / 2;
+            node.y = startY + NODE_H / 2;
+          } else {
+            node.x = startX + NODE_W / 2;
+            node.y = startY + index * (NODE_H + V_GAP) + NODE_H / 2;
+          }
+        }
+      }
+
+      const nodes = [];
+      const loopNodes = [];
+      const loopGroups = [];
+      const nodesByAggregate = new Map();
+
+      function getNodeModuleCount(node) {
+        if (Number.isFinite(node._moduleCount)) return node._moduleCount;
+        return node.machineCount || 0;
+      }
+
+      function getNodeModuleRate(node) {
+        if (Number.isFinite(node._moduleRate)) return node._moduleRate;
+        return node.rate || 0;
+      }
+
+      function collectSeedLoops(node, depth) {
+        const baseRate = getNodeModuleRate(node);
+        if (!node.seedLoops || node.seedLoops.length === 0 || baseRate <= EPS) return;
+        for (const loop of node.seedLoops) {
+          const seedRecipe = loop.seedRecipe;
+          const seedItem = itemMap[loop.seedItemId] || {};
+          if (!seedRecipe) continue;
+          const seedsPerOutput = loop.seedsPerOutput || loop.seedPerOutput || 0;
+          if (seedsPerOutput <= EPS) continue;
+          const seedEffectiveRate = loop.seedRecipeEffectiveRate || getOutputRate(seedRecipe);
+          if (!Number.isFinite(seedEffectiveRate) || seedEffectiveRate <= 0) continue;
+          const seedRateDesired = baseRate * seedsPerOutput;
+          const seedMachineCount = Math.ceil(seedRateDesired / seedEffectiveRate - EPS);
+          if (seedMachineCount <= 0) continue;
+          const seedRate = Math.min(seedRateDesired, seedMachineCount * seedEffectiveRate);
+          if (seedRate <= EPS) continue;
+          const perMachineRate = seedRate / seedMachineCount;
+
+          const groupNodes = [];
+          for (let index = 0; index < seedMachineCount; index += 1) {
+            const id = `l-${node.id}-${loop.seedItemId}-${index + 1}`;
+            const loopNode = {
               id,
               x: 0,
               y: 0,
               depth,
-              itemId: node.itemId,
-              machineId: node.machineId,
+              itemId: loop.seedItemId,
+              machineId: loop.seedMachineId,
               rate: perMachineRate,
-              icon: item.icon || "",
-              isRaw: item.map_only,
+              icon: seedItem.icon || "",
+              isRaw: seedItem.map_only,
+              isLoop: true,
               machineIndex: index + 1,
-              machineTotal: node.machineCount
+              machineTotal: seedMachineCount
             };
-            nodes.push(machineNode);
-            machineNodes.push(machineNode);
+            loopNodes.push(loopNode);
+            groupNodes.push(loopNode);
+          }
+          if (groupNodes.length > 0) {
+            loopGroups.push({ parentId: node.id, nodes: groupNodes });
+          }
+        }
+      }
+
+      function createNodes(node) {
+        const depth = depthMap.get(node.id) || 0;
+        const item = itemMap[node.itemId] || {};
+        const moduleCount = getNodeModuleCount(node);
+        const moduleRate = getNodeModuleRate(node);
+        if (node.machineId && moduleCount > 0 && moduleRate > EPS) {
+          const perMachineRate = moduleRate / moduleCount;
+          const machineNodes = [];
+            for (let index = 0; index < moduleCount; index += 1) {
+              const id = `m-${node.id}-${index + 1}`;
+              const machineNode = {
+                id,
+                sourceId: node.id,
+                x: 0,
+                y: 0,
+                depth,
+                itemId: node.itemId,
+                machineId: node.machineId,
+                rate: perMachineRate,
+                icon: item.icon || "",
+                isRaw: item.map_only,
+                isBoundary: Boolean(node.isBoundary),
+                machineIndex: index + 1,
+                machineTotal: moduleCount
+              };
+              nodes.push(machineNode);
+              machineNodes.push(machineNode);
           }
           nodesByAggregate.set(node.id, machineNodes);
-        } else if (node.rate > EPS) {
+        } else if (moduleRate > EPS) {
           const id = `r-${node.id}`;
-          const rawNode = {
-            id,
-            x: 0,
-            y: 0,
-            depth,
-            itemId: node.itemId,
-            machineId: null,
-            rate: node.rate,
-            icon: item.icon || "",
-            isRaw: true,
-            machineIndex: null,
-            machineTotal: null
-          };
+            const rawNode = {
+              id,
+              sourceId: node.id,
+              x: 0,
+              y: 0,
+              depth,
+              itemId: node.itemId,
+              machineId: null,
+              rate: moduleRate,
+              icon: item.icon || "",
+              isRaw: item.map_only,
+              isBoundary: Boolean(node.isBoundary),
+              machineIndex: null,
+              machineTotal: null
+            };
           nodes.push(rawNode);
           nodesByAggregate.set(node.id, [rawNode]);
         } else {
           nodesByAggregate.set(node.id, []);
         }
+
+        collectSeedLoops(node, depth);
 
         for (const child of node.children || []) {
           createNodes(child);
@@ -1363,16 +1961,22 @@ const app = createApp({
 
       const rawLinks = new Map();
 
-      function addLink(fromId, toId, weight) {
+      function addLink(fromId, toId, weight, inputIndex = 0) {
         if (!fromId || !toId) return;
         const key = `${fromId}|${toId}`;
         const existing = rawLinks.get(key);
-        rawLinks.set(key, (existing || 0) + weight);
+        if (existing) {
+          existing.weight += weight;
+        } else {
+          rawLinks.set(key, { weight, inputIndex });
+        }
       }
 
       function connectNodes(node) {
         const parentMachines = nodesByAggregate.get(node.id) || [];
-        const perMachineOutputRate = node.machineCount > 0 ? node.rate / node.machineCount : 0;
+        const parentRate = getNodeModuleRate(node);
+        const parentCount = getNodeModuleCount(node);
+        const perMachineOutputRate = parentCount > 0 ? parentRate / parentCount : 0;
 
         const children = node.children || [];
         const inputSpecs = node.inputSpecs || [];
@@ -1387,27 +1991,48 @@ const app = createApp({
           const perParentDemand = perMachineOutputRate * (inputSpec.qtyPerOutput || 0);
           if (perParentDemand <= EPS) continue;
 
-          const childPerMachineSupply = child.machineCount > 0 ? child.rate / child.machineCount : child.rate;
+          const childRate = getNodeModuleRate(child);
+          const childCount = getNodeModuleCount(child);
+          const childPerMachineSupply = childCount > 0 ? childRate / childCount : childRate;
           if (childPerMachineSupply <= EPS) continue;
 
-          let childIndex = 0;
-          let remaining = childPerMachineSupply;
+          // 按照生产流程建立连接：根据父子机器数量比例进行连接
+          // 如果比例相同，则一对一连接；否则按比例分配
+          const totalParentCount = parentMachines.length;
+          const totalChildCount = childMachines.length;
 
-          for (const parentMachine of parentMachines) {
-            let demand = perParentDemand;
-            while (demand > EPS && childIndex < childMachines.length) {
-              const take = Math.min(demand, remaining);
-              const childMachine = childMachines[childIndex];
-              addLink(parentMachine.id, childMachine.id, take);
-              demand -= take;
-              remaining -= take;
-              if (remaining <= EPS) {
-                childIndex += 1;
-                remaining = childPerMachineSupply;
+          if (totalParentCount === 0 || totalChildCount === 0) continue;
+
+          // 计算每个父机器应该连接多少个子机器
+          const childrenPerParent = totalChildCount / totalParentCount;
+
+          for (let pIdx = 0; pIdx < totalParentCount; pIdx += 1) {
+            const parentMachine = parentMachines[pIdx];
+            const totalDemand = perParentDemand;
+
+            // 计算这个父机器应该连接的子机器范围
+            const childStartFloat = pIdx * childrenPerParent;
+            const childEndFloat = (pIdx + 1) * childrenPerParent;
+            const childStartIdx = Math.floor(childStartFloat);
+            const childEndIdx = Math.ceil(childEndFloat);
+
+            // 连接到范围内的子机器
+            for (let cIdx = childStartIdx; cIdx < Math.min(childEndIdx, totalChildCount); cIdx += 1) {
+              const childMachine = childMachines[cIdx];
+
+              // 计算权重：如果子机器完全在范围内，权重为1；否则按比例分配
+              let weight = 1.0;
+              if (cIdx === childStartIdx && childStartFloat > childStartIdx) {
+                // 第一个子机器可能只占部分
+                weight = 1.0 - (childStartFloat - childStartIdx);
+              } else if (cIdx === childEndIdx - 1 && childEndFloat < childEndIdx) {
+                // 最后一个子机器可能只占部分
+                weight = childEndFloat - cIdx;
               }
-            }
-            if (childIndex >= childMachines.length) {
-              break;
+
+              // 归一化权重
+              const normalizedWeight = (totalDemand * weight) / childrenPerParent;
+              addLink(childMachine.id, parentMachine.id, normalizedWeight, index);
             }
           }
         }
@@ -1421,47 +2046,181 @@ const app = createApp({
         connectNodes(root);
       }
 
-      const levels = [];
-      for (let depth = 0; depth <= maxDepth; depth += 1) {
-        levels.push([]);
+      const branchGap = horizontal ? V_GAP : H_GAP;
+
+      function computeGridLayout(count) {
+        if (count <= 0) {
+          return { cols: 0, rows: 0, width: 0, height: 0 };
+        }
+        if (count === 1) {
+          return { cols: 1, rows: 1, width: NODE_W, height: NODE_H };
+        }
+        const cols = Math.max(1, Math.ceil(Math.sqrt(count)));
+        const rows = Math.ceil(count / cols);
+        const width = cols * NODE_W + (cols - 1) * H_GAP;
+        const height = rows * NODE_H + (rows - 1) * V_GAP;
+        return { cols, rows, width, height };
       }
-      for (const node of nodes) {
-        const depth = node.depth || 0;
-        if (!levels[depth]) levels[depth] = [];
-        levels[depth].push(node);
+
+      function computeGroupLayout(count, axis) {
+        if (count <= 6) {
+          const line = computeLine(count, axis);
+          return { ...line, kind: "line" };
+        }
+        const grid = computeGridLayout(count);
+        return { ...grid, axis, count, kind: "grid" };
       }
 
-      const maxLevelSize = levels.reduce((max, level) => Math.max(max, level.length), 1);
-      const depthCount = Math.max(1, maxDepth + 1);
+      function layoutGroupNodes(groupNodes, layout, startX, startY) {
+        if (!groupNodes || groupNodes.length === 0 || !layout) return;
+        if (layout.kind !== "grid") {
+          layoutLine(groupNodes, layout, startX, startY);
+          return;
+        }
+        const cols = Math.max(1, layout.cols || 1);
+        for (let index = 0; index < groupNodes.length; index += 1) {
+          const node = groupNodes[index];
+          const row = Math.floor(index / cols);
+          const col = index % cols;
+          node.x = startX + col * (NODE_W + H_GAP) + NODE_W / 2;
+          node.y = startY + row * (NODE_H + V_GAP) + NODE_H / 2;
+        }
+      }
 
-      const totalSpan = horizontal
-        ? maxLevelSize * NODE_H + (maxLevelSize - 1) * V_GAP
-        : maxLevelSize * NODE_W + (maxLevelSize - 1) * H_GAP;
+      const aggregateLayouts = new Map();
+      function getAggregateLayout(aggregateId) {
+        if (aggregateLayouts.has(aggregateId)) return aggregateLayouts.get(aggregateId);
+        const groupNodes = nodesByAggregate.get(aggregateId) || [];
+        const layout = computeGridLayout(groupNodes.length);
+        aggregateLayouts.set(aggregateId, layout);
+        return layout;
+      }
 
-      const width = horizontal
-        ? MARGIN * 2 + depthCount * NODE_W + (depthCount - 1) * H_GAP
-        : MARGIN * 2 + totalSpan;
-      const height = horizontal
-        ? MARGIN * 2 + totalSpan
-        : MARGIN * 2 + depthCount * NODE_H + (depthCount - 1) * V_GAP;
-
-      for (let depth = 0; depth < levels.length; depth += 1) {
-        const level = levels[depth];
-        if (level.length === 0) continue;
-        const levelSpan = horizontal
-          ? level.length * NODE_H + (level.length - 1) * V_GAP
-          : level.length * NODE_W + (level.length - 1) * H_GAP;
-        const offset = (totalSpan - levelSpan) / 2;
-
-        for (let index = 0; index < level.length; index += 1) {
-          const node = level[index];
-          if (horizontal) {
-            node.x = MARGIN + depth * (NODE_W + H_GAP) + NODE_W / 2;
-            node.y = MARGIN + offset + NODE_H / 2 + index * (NODE_H + V_GAP);
+      const displayChildrenCache = new Map();
+      function getDisplayChildren(node) {
+        if (!node) return [];
+        if (displayChildrenCache.has(node.id)) return displayChildrenCache.get(node.id);
+        const result = [];
+        for (const child of node.children || []) {
+          const group = nodesByAggregate.get(child.id) || [];
+          if (group.length > 0) {
+            result.push(child);
           } else {
-            node.x = MARGIN + offset + NODE_W / 2 + index * (NODE_W + H_GAP);
-            node.y = MARGIN + depth * (NODE_H + V_GAP) + NODE_H / 2;
+            result.push(...getDisplayChildren(child));
           }
+        }
+        displayChildrenCache.set(node.id, result);
+        return result;
+      }
+
+      const layoutRoots = [];
+      const layoutRootIds = new Set();
+      for (const root of roots) {
+        const group = nodesByAggregate.get(root.id) || [];
+        if (group.length > 0) {
+          if (!layoutRootIds.has(root.id)) {
+            layoutRoots.push(root);
+            layoutRootIds.add(root.id);
+          }
+        } else {
+          for (const child of getDisplayChildren(root)) {
+            if (!layoutRootIds.has(child.id)) {
+              layoutRoots.push(child);
+              layoutRootIds.add(child.id);
+            }
+          }
+        }
+      }
+
+      const spanById = new Map();
+      const visiting = new Set();
+
+      function measureAggregate(node) {
+        if (!node) return 0;
+        if (spanById.has(node.id)) return spanById.get(node.id);
+        if (visiting.has(node.id)) {
+          const layout = getAggregateLayout(node.id);
+          return horizontal ? layout.height : layout.width;
+        }
+        visiting.add(node.id);
+        const layout = getAggregateLayout(node.id);
+        const children = getDisplayChildren(node);
+        let span = horizontal ? layout.height : layout.width;
+        if (children.length > 0) {
+          let total = 0;
+          for (const child of children) {
+            total += measureAggregate(child);
+          }
+          total += branchGap * Math.max(0, children.length - 1);
+          span = Math.max(span, total);
+        }
+        spanById.set(node.id, span);
+        visiting.delete(node.id);
+        return span;
+      }
+
+      const aggregateCenters = new Map();
+
+      function assignAggregate(node, x, y) {
+        if (!node) return;
+        const layout = getAggregateLayout(node.id);
+        aggregateCenters.set(node.id, { x, y });
+        const children = getDisplayChildren(node);
+        if (children.length === 0) return;
+        const totalSpan = spanById.get(node.id) || (horizontal ? layout.height : layout.width);
+        let start = (horizontal ? y : x) - totalSpan / 2;
+        for (const child of children) {
+          const childLayout = getAggregateLayout(child.id);
+          const childSpan = spanById.get(child.id) || (horizontal ? childLayout.height : childLayout.width);
+          const childCenter = start + childSpan / 2;
+          if (horizontal) {
+            const gap = layout.width / 2 + childLayout.width / 2 + H_GAP;
+            assignAggregate(child, x - gap, childCenter);
+          } else {
+            const gap = layout.height / 2 + childLayout.height / 2 + V_GAP;
+            assignAggregate(child, childCenter, y - gap);
+          }
+          start += childSpan + branchGap;
+        }
+      }
+
+      let cursor = 0;
+      for (const root of layoutRoots) {
+        const span = measureAggregate(root);
+        if (horizontal) {
+          assignAggregate(root, 0, cursor + span / 2);
+        } else {
+          assignAggregate(root, cursor + span / 2, 0);
+        }
+        cursor += span + branchGap;
+      }
+
+      for (const [aggregateId, groupNodes] of nodesByAggregate.entries()) {
+        if (!groupNodes || groupNodes.length === 0) continue;
+        if (aggregateCenters.has(aggregateId)) continue;
+        const layout = getAggregateLayout(aggregateId);
+        if (horizontal) {
+          assignAggregate({ id: aggregateId, children: [] }, 0, cursor + layout.height / 2);
+          cursor += layout.height + branchGap;
+        } else {
+          assignAggregate({ id: aggregateId, children: [] }, cursor + layout.width / 2, 0);
+          cursor += layout.width + branchGap;
+        }
+      }
+
+      for (const [aggregateId, groupNodes] of nodesByAggregate.entries()) {
+        if (!groupNodes || groupNodes.length === 0) continue;
+        const center = aggregateCenters.get(aggregateId);
+        const layout = getAggregateLayout(aggregateId);
+        if (!center || layout.cols <= 0 || layout.rows <= 0) continue;
+        const startX = center.x - layout.width / 2;
+        const startY = center.y - layout.height / 2;
+        for (let index = 0; index < groupNodes.length; index += 1) {
+          const node = groupNodes[index];
+          const row = Math.floor(index / layout.cols);
+          const col = index % layout.cols;
+          node.x = startX + col * (NODE_W + H_GAP) + NODE_W / 2;
+          node.y = startY + row * (NODE_H + V_GAP) + NODE_H / 2;
         }
       }
 
@@ -1470,40 +2229,150 @@ const app = createApp({
         nodeMap[node.id] = node;
       }
 
-      const links = Array.from(rawLinks.keys()).map((key) => {
+      const aggregateBounds = new Map();
+      for (const [aggregateId, groupNodes] of nodesByAggregate.entries()) {
+        if (!groupNodes || groupNodes.length === 0) continue;
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        for (const node of groupNodes) {
+          minX = Math.min(minX, node.x - NODE_W / 2);
+          maxX = Math.max(maxX, node.x + NODE_W / 2);
+          minY = Math.min(minY, node.y - NODE_H / 2);
+          maxY = Math.max(maxY, node.y + NODE_H / 2);
+        }
+        aggregateBounds.set(aggregateId, {
+          minX,
+          maxX,
+          minY,
+          maxY,
+          centerX: (minX + maxX) / 2,
+          centerY: (minY + maxY) / 2
+        });
+      }
+
+      const loopsByParent = new Map();
+      for (const group of loopGroups) {
+        if (!group.nodes || group.nodes.length === 0) continue;
+        if (!loopsByParent.has(group.parentId)) {
+          loopsByParent.set(group.parentId, []);
+        }
+        loopsByParent.get(group.parentId).push(group);
+      }
+
+      const loopAxis = horizontal ? "y" : "x";
+
+      for (const [parentId, groups] of loopsByParent.entries()) {
+        const base = aggregateBounds.get(parentId);
+        if (!base) continue;
+        const offsetBase = (groups.length - 1) / 2;
+        for (let index = 0; index < groups.length; index += 1) {
+          const group = groups[index];
+          const layout = computeGroupLayout(group.nodes.length, loopAxis);
+          if (layout.count === 0) continue;
+          const offset = index - offsetBase;
+          if (horizontal) {
+            const centerX = base.maxX + LOOP_GAP + layout.width / 2 + offset * (layout.width + LOOP_GAP);
+            const centerY = base.centerY;
+            layoutGroupNodes(group.nodes, layout, centerX - layout.width / 2, centerY - layout.height / 2);
+          } else {
+            const centerX = base.maxX + LOOP_GAP + layout.width / 2;
+            const centerY = base.maxY + LOOP_GAP + layout.height / 2 + offset * (layout.height + LOOP_GAP);
+            layoutGroupNodes(group.nodes, layout, centerX - layout.width / 2, centerY - layout.height / 2);
+          }
+        }
+      }
+
+      const allNodes = nodes.concat(loopNodes);
+      if (allNodes.length === 0) {
+        return null;
+      }
+
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      for (const node of allNodes) {
+        minX = Math.min(minX, node.x - NODE_W / 2);
+        maxX = Math.max(maxX, node.x + NODE_W / 2);
+        minY = Math.min(minY, node.y - NODE_H / 2);
+        maxY = Math.max(maxY, node.y + NODE_H / 2);
+      }
+
+      const width = Math.max(1, maxX - minX + MARGIN * 2);
+      const height = Math.max(1, maxY - minY + MARGIN * 2);
+      const shiftX = MARGIN - minX;
+      const shiftY = MARGIN - minY;
+
+      for (const node of allNodes) {
+        node.x += shiftX;
+        node.y += shiftY;
+      }
+
+      for (const node of loopNodes) {
+        nodeMap[node.id] = node;
+      }
+
+      function buildPath(from, to, useHorizontal, offset = 0) {
+        if (useHorizontal) {
+          const x1 = from.x + NODE_W / 2;
+          const y1 = from.y + offset;
+          const x2 = to.x - NODE_W / 2;
+          const y2 = to.y + offset;
+          const midX = (x1 + x2) / 2;
+          return `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
+        }
+        const x1 = from.x + offset;
+        const y1 = from.y + NODE_H / 2;
+        const x2 = to.x + offset;
+        const y2 = to.y - NODE_H / 2;
+        const midY = (y1 + y2) / 2;
+        return `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
+      }
+
+      // 定义颜色方案
+      const linkColors = [
+        '#3b82f6', // 蓝色
+        '#10b981', // 绿色
+        '#f59e0b', // 橙色
+        '#ef4444', // 红色
+        '#8b5cf6', // 紫色
+        '#ec4899', // 粉色
+        '#14b8a6', // 青色
+        '#f97316', // 深橙色
+      ];
+
+      const links = Array.from(rawLinks.entries()).map(([key, linkData]) => {
         const [fromId, toId] = key.split("|");
         const from = nodeMap[fromId];
         const to = nodeMap[toId];
         if (!from || !to) return null;
-        if (horizontal) {
-          const x1 = from.x + NODE_W / 2;
-          const y1 = from.y;
-          const x2 = to.x - NODE_W / 2;
-          const y2 = to.y;
-          const midX = (x1 + x2) / 2;
-          return { path: `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}` };
-        }
-        const x1 = from.x;
-        const y1 = from.y + NODE_H / 2;
-        const x2 = to.x;
-        const y2 = to.y - NODE_H / 2;
-        const midY = (y1 + y2) / 2;
-        return { path: `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}` };
+        const color = linkColors[linkData.inputIndex % linkColors.length];
+        return { path: buildPath(from, to, horizontal), color };
       }).filter(Boolean);
+
+      const loopUseHorizontal = horizontal;
+      for (const group of loopGroups) {
+        const parentMachines = nodesByAggregate.get(group.parentId) || [];
+        if (parentMachines.length === 0 || group.nodes.length === 0) continue;
+        const parentAnchor = parentMachines[Math.floor(parentMachines.length / 2)];
+        const loopAnchor = group.nodes[Math.floor(group.nodes.length / 2)];
+        const forward = buildPath(parentAnchor, loopAnchor, loopUseHorizontal);
+        links.push({ path: forward, loop: true });
+      }
 
       return {
         width,
         height,
         nodeSize: { width: NODE_W, height: NODE_H },
-        nodes,
+        nodes: allNodes,
         links
       };
     }
 
-    function buildGraph(roots, itemMap, machineMap, orientation = "vertical", mode = "summary") {
-      if (mode === "precise") {
-        return buildPreciseGraph(roots, itemMap, machineMap, orientation);
-      }
+    function buildGraph(roots, itemMap, machineMap, orientation = "vertical", viewState = {}) {
       return buildSummaryGraph(roots, itemMap, machineMap, orientation);
     }
 
@@ -1580,7 +2449,6 @@ const app = createApp({
       diagramRef,
       diagramTransform,
       toggleDiagramFullscreen,
-      setDiagramMode,
       setDiagramOrientation,
       zoomIn,
       zoomOut,

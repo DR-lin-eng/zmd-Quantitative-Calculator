@@ -411,6 +411,11 @@ td {
   justify-content: flex-end;
 }
 
+.diagram-mode {
+  font-weight: 600;
+  color: var(--accent-2);
+}
+
 .zoom-controls {
   display: inline-flex;
   align-items: center;
@@ -488,8 +493,17 @@ body.diagram-fullscreen {
 
 .links path {
   fill: none;
-  stroke: rgba(15, 118, 110, 0.35);
+  color: rgba(15, 118, 110, 0.35);
+  stroke: currentColor;
   stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  marker-end: url(#flow-arrow);
+}
+
+.links path.loop {
+  color: rgba(194, 65, 12, 0.45);
+  stroke-dasharray: 6 6;
 }
 
 .node rect {
@@ -501,6 +515,24 @@ body.diagram-fullscreen {
 
 .node.raw rect {
   fill: #fef3c7;
+}
+
+.node.loop rect {
+  fill: #fff7ed;
+  stroke: rgba(194, 65, 12, 0.4);
+  stroke-dasharray: 6 4;
+}
+
+.node.overview rect {
+  fill: #fff7ed;
+}
+
+.node.area rect {
+  fill: #ecfeff;
+}
+
+.node.area.alert rect {
+  stroke: var(--accent);
 }
 
 .node-title {
@@ -553,11 +585,28 @@ body.diagram-fullscreen {
   .target-row {
     flex-direction: column;
     align-items: stretch;
+    gap: 6px;
   }
 
   .target-actions {
     margin-left: 0;
     justify-content: flex-start;
+    gap: 4px;
+  }
+
+  .target-row select,
+  .target-row .checkbox {
+    font-size: 0.85rem;
+  }
+
+  .target-row select {
+    padding: 8px 10px;
+  }
+
+  .target-actions .icon-btn {
+    padding: 4px 6px;
+    border-radius: 8px;
+    font-size: 0.85rem;
   }
 
   .diagram-actions {

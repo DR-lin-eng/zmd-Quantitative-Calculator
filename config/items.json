@@ -1296,7 +1296,7 @@
     {
       "id": "liquid_water",
       "name": "Liquid Water",
-      "name_zh": "清水（白矿）",
+      "name_zh": "水",
       "category": "raw",
       "map_only": true,
       "icon": "https://placehold.co/64x64/5ae5f9/ffffff?text=LIQU",

@@ -212,36 +212,11 @@
             </div>
 
             <div class="section">
-              <div class="diagram-shell" :class="{ fullscreen: diagramFullscreen }">
-                <div class="section-header diagram-header">
-                  <h2>{{ t('diagram') }}</h2>
-                  <div class="diagram-actions">
-                    <div class="segmented">
-                      <button
-                        class="seg-btn"
-                        :class="{ active: diagramOrientation === 'vertical' }"
-                        @click="setDiagramOrientation('vertical')"
-                        type="button"
-                      >
-                        {{ t('diagramVertical') }}
-                      </button>
-                      <button
-                        class="seg-btn"
-                        :class="{ active: diagramOrientation === 'horizontal' }"
-                        @click="setDiagramOrientation('horizontal')"
-                        type="button"
-                      >
-                        {{ t('diagramHorizontal') }}
-                      </button>
-                    </div>
-                    <div class="segmented">
-                      <button class="seg-btn" :class="{ active: diagramMode === 'summary' }" @click="setDiagramMode('summary')" type="button">
-                        {{ t('diagramSummary') }}
-                      </button>
-                      <button class="seg-btn" :class="{ active: diagramMode === 'precise' }" @click="setDiagramMode('precise')" type="button">
-                        {{ t('diagramPrecise') }}
-                      </button>
-                    </div>
+                <div class="diagram-shell" :class="{ fullscreen: diagramFullscreen }">
+                  <div class="section-header diagram-header">
+                    <h2>{{ t('diagram') }}</h2>
+                    <div class="diagram-actions">
+                    <span class="diagram-mode">{{ t('diagramSummary') }}</span>
                     <div class="zoom-controls">
                       <button class="icon-btn" type="button" @click="zoomOut" :aria-label="t('diagramZoomOut')">-</button>
                       <span class="zoom-label">{{ diagramZoomLabel }}%</span>
@@ -250,13 +225,13 @@
                     </div>
                     <button class="btn ghost" type="button" @click="toggleDiagramFullscreen">
                       {{ diagramFullscreen ? t('diagramExitFullscreen') : t('diagramFullscreen') }}
-                    </button>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div
-                  class="diagram"
-                  v-if="results.graph"
-                  ref="diagramRef"
+                  <div
+                    class="diagram"
+                    v-if="results.graph"
+                    ref="diagramRef"
                   @wheel="onDiagramWheel"
                   @pointerdown="onDiagramPointerDown"
                   @pointermove="onDiagramPointerMove"
@@ -278,11 +253,27 @@
                       :width="results.graph.width"
                       :height="results.graph.height"
                     >
+                      <defs>
+                        <marker id="flow-arrow" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+                          <path d="M 0 0 L 8 4 L 0 8 z" fill="currentColor" />
+                        </marker>
+                      </defs>
                       <g class="links">
-                        <path v-for="(link, index) in results.graph.links" :key="index" :d="link.path" />
+                        <path v-for="(link, index) in results.graph.links" :key="index" :d="link.path" :class="{ loop: link.loop }" :style="link.color ? { stroke: link.color } : {}" />
                       </g>
                       <g class="nodes">
-                        <g v-for="node in results.graph.nodes" :key="node.id" class="node" :class="{ raw: node.isRaw }">
+                          <g
+                            v-for="node in results.graph.nodes"
+                            :key="node.id"
+                            class="node"
+                            :class="{
+                              raw: node.isRaw,
+                              loop: node.isLoop,
+                              overview: node.kind === 'overview',
+                              area: node.kind === 'area',
+                              alert: node.alert
+                            }"
+                          >
                           <rect
                             :x="node.x - results.graph.nodeSize.width / 2"
                             :y="node.y - results.graph.nodeSize.height / 2"
@@ -303,23 +294,36 @@
                             :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
                             :y="node.y - 12"
                           >
-                            {{ displayItemName(node.itemId) }}
+                            {{ node.title || displayItemName(node.itemId) }}
                           </text>
-                          <text
-                            class="node-sub"
-                            :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
-                            :y="node.y + 10"
-                          >
-                            {{ formatRatePerMinute(node.rate) }} /min
-                          </text>
-                          <text
-                            v-if="node.machineId"
-                            class="node-sub"
-                            :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
-                            :y="node.y + 30"
-                          >
-                            {{ displayMachineName(node.machineId) }}<tspan v-if="node.machineIndex"> #{{ node.machineIndex }}/{{ node.machineTotal }}</tspan>
-                          </text>
+                          <template v-if="node.subLines && node.subLines.length">
+                            <text
+                              v-for="(line, idx) in node.subLines"
+                              :key="node.id + '-' + idx"
+                              class="node-sub"
+                              :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
+                              :y="node.y + 10 + idx * 18"
+                            >
+                              {{ line }}
+                            </text>
+                          </template>
+                          <template v-else>
+                            <text
+                              class="node-sub"
+                              :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
+                              :y="node.y + 10"
+                            >
+                              {{ formatRatePerMinute(node.rate) }} /min
+                            </text>
+                            <text
+                              v-if="node.machineId"
+                              class="node-sub"
+                              :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
+                              :y="node.y + 30"
+                            >
+                              {{ displayMachineName(node.machineId) }}<tspan v-if="node.machineIndex"> #{{ node.machineIndex }}/{{ node.machineTotal }}</tspan>
+                            </text>
+                          </template>
                         </g>
                       </g>
                     </svg>
