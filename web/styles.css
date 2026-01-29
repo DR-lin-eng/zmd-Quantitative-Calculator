@@ -75,6 +75,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .layout {
@@ -226,6 +227,10 @@ select:focus {
   border-color: transparent;
 }
 
+.guide-btn {
+  box-shadow: 0 12px 26px rgba(194, 65, 12, 0.28);
+}
+
 .btn.ghost {
   background: transparent;
 }
@@ -247,6 +252,77 @@ select:focus {
   align-items: center;
   gap: 8px;
   font-size: 0.9rem;
+}
+
+.collapse {
+  margin-top: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.collapse summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent-2);
+}
+
+.collapse summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapse summary::marker {
+  content: "";
+}
+
+.collapse[open] summary {
+  margin-bottom: 10px;
+}
+
+.guide-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 2000;
+}
+
+.guide-card {
+  width: min(760px, 92vw);
+  max-height: 85vh;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  animation: rise 0.3s ease both;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+}
+
+.guide-content {
+  padding: 0 24px 24px;
+  color: var(--ink);
+}
+
+.guide-content h3 {
+  margin: 16px 0 8px;
+  font-size: 1.05rem;
+}
+
+.guide-content ol,
+.guide-content ul {
+  padding-left: 22px;
+  margin: 8px 0;
 }
 
 .card-grid {

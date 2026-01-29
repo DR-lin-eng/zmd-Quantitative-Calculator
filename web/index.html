@@ -21,6 +21,7 @@
           <p class="subtitle">{{ t('subtitle') }}</p>
         </div>
         <div class="header-actions">
+          <button class="btn primary guide-btn" @click="openGuide">{{ t('usageGuide') }}</button>
           <button class="btn ghost" @click="toggleLang">{{ lang === 'zh' ? 'EN' : '中文' }}</button>
           <label class="toggle">
             <input type="checkbox" v-model="showIcons" />
@@ -65,6 +66,47 @@
                 <input type="number" step="0.1" v-model="supply.rate" />
               </div>
             </div>
+          </div>
+
+          <div class="section">
+            <div class="section-header">
+              <h2>{{ t('machineLimits') }}</h2>
+              <span class="hint">{{ t('machineLimitsHint') }}</span>
+            </div>
+            <div class="list">
+              <div class="row" v-for="machine in primaryMachineLimits" :key="machine.id">
+                <div class="row-left">
+                  <img v-if="showIcons && machine.icon" :src="machine.icon" alt="" />
+                  <div class="row-label">{{ displayMachineName(machine.id) }}</div>
+                </div>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  v-model.number="machineLimits[machine.id]"
+                  :placeholder="t('unlimited')"
+                />
+              </div>
+            </div>
+            <details class="collapse" v-if="secondaryMachineLimits.length">
+              <summary>{{ t('otherMachines') }}</summary>
+              <div class="list">
+                <div class="row" v-for="machine in secondaryMachineLimits" :key="machine.id">
+                  <div class="row-left">
+                    <img v-if="showIcons && machine.icon" :src="machine.icon" alt="" />
+                    <div class="row-label">{{ displayMachineName(machine.id) }}</div>
+                  </div>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    v-model.number="machineLimits[machine.id]"
+                    :placeholder="t('unlimited')"
+                  />
+                </div>
+              </div>
+            </details>
+            <button class="btn ghost" @click="resetMachineLimits">{{ t('resetDefaults') }}</button>
           </div>
 
           <div class="section">
@@ -147,8 +189,8 @@
                   <tr v-for="raw in results.rawUsage" :key="raw.itemId">
                     <td>{{ displayItemName(raw.itemId) }}</td>
                     <td>{{ formatNumber(raw.used) }}</td>
-                    <td>{{ formatNumber(raw.available) }}</td>
-                    <td>{{ formatNumber(raw.utilization * 100) }}%</td>
+                    <td>{{ raw.unlimited ? t('unlimited') : formatNumber(raw.available) }}</td>
+                    <td>{{ raw.unlimited ? '-' : formatNumber(raw.utilization * 100) + '%' }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -335,6 +377,44 @@
           </template>
         </section>
       </main>
+      <div v-if="showGuide" class="guide-modal" @click="onGuideBackdrop">
+        <div class="guide-card">
+          <div class="guide-header">
+            <h2>{{ t('usageGuideTitle') }}</h2>
+            <button class="icon-btn" @click="closeGuide">✕</button>
+          </div>
+          <div class="guide-content">
+            <template v-if="lang === 'zh'">
+              <p>用于在给定原料供给下，计算目标产品的生产链、机器数量与能耗。</p>
+              <ol>
+                <li>在“地图原料供给”填写每分钟供给量；填 0 表示该原料不限制。</li>
+                <li>在“机器数量限制”设置上限；天有洪炉默认 1，留空表示不限。</li>
+                <li>在“目标产品”选择优先级与产出，勾选“最大化”会尽可能消耗原料。</li>
+                <li>点击“计算”得到产出、机器统计、功耗与流程图。</li>
+              </ol>
+              <h3>特别说明</h3>
+              <ul>
+                <li>当所有原料均不限制且目标未指定速率/最大化时，将按“最终产品 1 台机器”的产出计算。</li>
+                <li>原料填 0 会被视为无限，但会反算消耗量并在提示中显示。</li>
+              </ul>
+            </template>
+            <template v-else>
+              <p>Compute production chains, machine counts, and power usage from supplies.</p>
+              <ol>
+                <li>Enter per-minute supply; use 0 to mark a raw material as unlimited.</li>
+                <li>Set machine limits; Xiranite Oven defaults to 1, blank means unlimited.</li>
+                <li>Pick targets and priority; “Maximize” consumes remaining supply.</li>
+                <li>Click “Calculate” to get outputs, totals, and diagrams.</li>
+              </ol>
+              <h3>Notes</h3>
+              <ul>
+                <li>If all raws are unlimited and no target rate is set, we use 1 machine of the final product.</li>
+                <li>Raw set to 0 is treated as unlimited, but consumption is still estimated and shown.</li>
+              </ul>
+            </template>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Try CDN first, fallback to local -->

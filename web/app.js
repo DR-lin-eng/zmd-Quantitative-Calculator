@@ -21,6 +21,12 @@ const i18n = {
     generator: "发电机",
     generatorFuel: "燃料",
     supplies: "地图原料供给",
+    machineLimits: "机器数量限制",
+    machineLimitsHint: "留空表示不限制",
+    otherMachines: "其他机器",
+    usageGuide: "使用指南",
+    usageGuideTitle: "使用指南",
+    resetDefaults: "重置默认值",
     targets: "目标产品",
     priority: "按顺序优先",
     perSecond: "单位: /分钟",
@@ -61,7 +67,8 @@ const i18n = {
     machineCount: "机器数量",
     outputRate: "产出速度",
     beltOutputUtil: "出口带宽利用",
-    beltInputUtil: "入口带宽利用"
+    beltInputUtil: "入口带宽利用",
+    unlimited: "不限"
   },
   en: {
     title: "Infrastructure Production Calculator",
@@ -72,6 +79,12 @@ const i18n = {
     generator: "Generator",
     generatorFuel: "Fuel",
     supplies: "Map-only Supply",
+    machineLimits: "Machine Limits",
+    machineLimitsHint: "Leave blank for no limit",
+    otherMachines: "Other Machines",
+    usageGuide: "Usage Guide",
+    usageGuideTitle: "Usage Guide",
+    resetDefaults: "Reset Defaults",
     targets: "Target Products",
     priority: "Priority order",
     perSecond: "per minute",
@@ -112,7 +125,8 @@ const i18n = {
     machineCount: "Machines",
     outputRate: "Output Rate",
     beltOutputUtil: "Output Belt Util",
-    beltInputUtil: "Input Belt Util"
+    beltInputUtil: "Input Belt Util",
+    unlimited: "Unlimited"
   }
 };
 
@@ -126,7 +140,9 @@ const app = createApp({
       machines: [],
       generators: [],
       supplies: [],
+      machineLimits: {},
       targets: [],
+      showGuide: false,
       selectedGeneratorId: "",
       selectedFuelId: "",
       results: null,
@@ -186,6 +202,8 @@ const app = createApp({
     const mapOnlyItems = computed(() => state.items.filter((item) => item.map_only));
     const supplyItems = computed(() => state.items.filter((item) => item.map_only && !item.startup_only));
     const craftableItems = computed(() => state.items.filter((item) => !item.map_only));
+    const primaryMachineLimits = computed(() => state.machines.filter((machine) => machine.id === "xiranite_oven_1"));
+    const secondaryMachineLimits = computed(() => state.machines.filter((machine) => machine.id !== "xiranite_oven_1"));
 
     const generatorFuelOptions = computed(() => {
       const gen = generatorsById.value[state.selectedGeneratorId];
@@ -198,6 +216,7 @@ const app = createApp({
     function t(key) {
       return (i18n[state.lang] && i18n[state.lang][key]) || key;
     }
+
 
     function displayItemName(itemId) {
       const item = itemsById.value[itemId];
@@ -224,6 +243,26 @@ const app = createApp({
         return gen.name_zh || gen.name || gen.id;
       }
       return gen.name || gen.name_zh || gen.id;
+    }
+
+    function resetMachineLimits() {
+      for (const machine of state.machines) {
+        state.machineLimits[machine.id] = machine.id === "xiranite_oven_1" ? 1 : "";
+      }
+    }
+
+    function openGuide() {
+      state.showGuide = true;
+    }
+
+    function closeGuide() {
+      state.showGuide = false;
+    }
+
+    function onGuideBackdrop(event) {
+      if (event.target === event.currentTarget) {
+        closeGuide();
+      }
     }
 
     function formatNumber(value, digits = 2) {
@@ -902,10 +941,23 @@ const app = createApp({
       for (const supply of state.supplies) {
         const value = parseFloat(supply.rate);
         const perMinute = Number.isFinite(value) ? value : 0;
-        availableRaw[supply.itemId] = perMinute / 60;
+        if (perMinute <= EPS) {
+          availableRaw[supply.itemId] = Infinity;
+        } else {
+          availableRaw[supply.itemId] = perMinute / 60;
+        }
+      }
+      const availableMachines = {};
+      for (const machine of state.machines) {
+        const rawLimit = state.machineLimits[machine.id];
+        const parsedLimit = parseFloat(rawLimit);
+        if (Number.isFinite(parsedLimit) && parsedLimit >= 0) {
+          availableMachines[machine.id] = Math.floor(parsedLimit);
+        }
       }
 
       const variantCache = {};
+      const machineLimitWarnings = new Set();
 
       function addWarning(message) {
         warnings.push(message);
@@ -1151,6 +1203,13 @@ const app = createApp({
             const supply = available[rawId] || 0;
             maxRate = Math.min(maxRate, supply / qty);
           }
+          for (const [machineId, qty] of variant.machineUsage) {
+            if (qty <= 0) continue;
+            const limit = availableMachines[machineId];
+            if (Number.isFinite(limit)) {
+              maxRate = Math.min(maxRate, limit / qty);
+            }
+          }
           if (!Number.isFinite(maxRate)) maxRate = 0;
 
           if (!best) {
@@ -1201,6 +1260,26 @@ const app = createApp({
         }
       }
 
+      function mergeMachineUsage(target, source) {
+        for (const [machineId, qty] of source) {
+          target.set(machineId, (target.get(machineId) || 0) + qty);
+        }
+      }
+
+      function rollbackMachineUsage(available, usage) {
+        for (const [machineId, qty] of usage) {
+          if (!Number.isFinite(available[machineId])) continue;
+          available[machineId] += qty;
+        }
+      }
+
+      function warnMachineLimit(itemId, machineId) {
+        const key = `${itemId}|${machineId}`;
+        if (machineLimitWarnings.has(key)) return;
+        machineLimitWarnings.add(key);
+        addWarning(`Machine "${machineId}" limit reached while producing "${itemId}".`);
+      }
+
       function buildTreeDiscrete(itemId, variant, requestedRate, available, allowPartial) {
         const item = itemMap[itemId];
         if (!item) {
@@ -1208,7 +1287,8 @@ const app = createApp({
           return {
             node: { id: `n${nodeUid++}`, itemId, rate: 0, machineId: null, machineCount: 0, children: [] },
             actualRate: 0,
-            rawUsage: new Map()
+            rawUsage: new Map(),
+            machineUsage: new Map()
           };
         }
 
@@ -1216,7 +1296,8 @@ const app = createApp({
           return {
             node: { id: `n${nodeUid++}`, itemId, rate: 0, machineId: null, machineCount: 0, children: [] },
             actualRate: 0,
-            rawUsage: new Map()
+            rawUsage: new Map(),
+            machineUsage: new Map()
           };
         }
 
@@ -1233,7 +1314,8 @@ const app = createApp({
           return {
             node: { id: `n${nodeUid++}`, itemId, rate: actualRate, machineId: null, machineCount: 0, children: [] },
             actualRate,
-            rawUsage
+            rawUsage,
+            machineUsage: new Map()
           };
         }
 
@@ -1242,7 +1324,8 @@ const app = createApp({
           return {
             node: { id: `n${nodeUid++}`, itemId, rate: 0, machineId: null, machineCount: 0, children: [] },
             actualRate: 0,
-            rawUsage: new Map()
+            rawUsage: new Map(),
+            machineUsage: new Map()
           };
         }
 
@@ -1252,7 +1335,8 @@ const app = createApp({
           return {
             node: { id: `n${nodeUid++}`, itemId, rate: 0, machineId: null, machineCount: 0, children: [] },
             actualRate: 0,
-            rawUsage: new Map()
+            rawUsage: new Map(),
+            machineUsage: new Map()
           };
         }
 
@@ -1261,6 +1345,24 @@ const app = createApp({
 
         while (guard < 20) {
           guard += 1;
+          const machineId = variant.recipe.machine;
+          const machineLimit = availableMachines[machineId];
+          if (Number.isFinite(machineLimit)) {
+            const maxRateByMachine = machineLimit * effectiveRate;
+            if (targetRate > maxRateByMachine + EPS) {
+              warnMachineLimit(itemId, machineId);
+              targetRate = maxRateByMachine;
+              if (targetRate <= EPS) {
+                return {
+                  node: { id: `n${nodeUid++}`, itemId, rate: 0, machineId: null, machineCount: 0, children: [] },
+                  actualRate: 0,
+                  rawUsage: new Map(),
+                  machineUsage: new Map()
+                };
+              }
+              continue;
+            }
+          }
           const machineCount = allowPartial
             ? Math.ceil(targetRate / effectiveRate - EPS)
             : Math.floor(targetRate / effectiveRate + EPS);
@@ -1268,21 +1370,101 @@ const app = createApp({
             return {
               node: { id: `n${nodeUid++}`, itemId, rate: 0, machineId: null, machineCount: 0, children: [] },
               actualRate: 0,
-              rawUsage: new Map()
+              rawUsage: new Map(),
+              machineUsage: new Map()
             };
+          }
+          if (Number.isFinite(machineLimit) && machineCount > machineLimit) {
+            warnMachineLimit(itemId, machineId);
+            targetRate = machineLimit * effectiveRate;
+            if (targetRate <= EPS) {
+              return {
+                node: { id: `n${nodeUid++}`, itemId, rate: 0, machineId: null, machineCount: 0, children: [] },
+                actualRate: 0,
+                rawUsage: new Map(),
+                machineUsage: new Map()
+              };
+            }
+            continue;
           }
 
           const capacityRate = machineCount * effectiveRate;
           const actualRate = allowPartial ? Math.min(targetRate, capacityRate) : capacityRate;
+          let seedLimited = false;
+          for (const loop of variant.seedLoops || []) {
+            const seedLimit = availableMachines[loop.seedMachineId];
+            if (!Number.isFinite(seedLimit)) continue;
+            const seedsPerOutput = loop.seedsPerOutput || 0;
+            const seedEffectiveRate = loop.seedRecipeEffectiveRate || getOutputRate(loop.seedRecipe);
+            if (seedsPerOutput <= 0 || seedEffectiveRate <= 0) continue;
+            const maxRateBySeed = (seedLimit * seedEffectiveRate) / seedsPerOutput;
+            if (actualRate > maxRateBySeed + EPS) {
+              warnMachineLimit(itemId, loop.seedMachineId);
+              targetRate = Math.min(targetRate, maxRateBySeed);
+              seedLimited = true;
+            }
+          }
+          if (seedLimited) {
+            if (targetRate <= EPS) {
+              return {
+                node: { id: `n${nodeUid++}`, itemId, rate: 0, machineId: null, machineCount: 0, children: [] },
+                actualRate: 0,
+                rawUsage: new Map(),
+                machineUsage: new Map()
+              };
+            }
+            continue;
+          }
           const children = [];
           const rawUsage = new Map();
+          const machineUsage = new Map();
           let minSupportedRate = actualRate;
+
+          if (Number.isFinite(machineLimit)) {
+            availableMachines[machineId] = machineLimit - machineCount;
+            machineUsage.set(machineId, (machineUsage.get(machineId) || 0) + machineCount);
+          }
+
+          for (const loop of variant.seedLoops || []) {
+            const seedLimit = availableMachines[loop.seedMachineId];
+            if (!Number.isFinite(seedLimit)) continue;
+            const seedRateDesired = actualRate * (loop.seedsPerOutput || 0);
+            const seedEffectiveRate = loop.seedRecipeEffectiveRate || getOutputRate(loop.seedRecipe);
+            const seedMachineCount = seedEffectiveRate > 0
+              ? Math.ceil(seedRateDesired / seedEffectiveRate - EPS)
+              : 0;
+            if (seedMachineCount <= 0) continue;
+            if (seedMachineCount > seedLimit + EPS) {
+              warnMachineLimit(itemId, loop.seedMachineId);
+              rollbackMachineUsage(availableMachines, machineUsage);
+              targetRate = (seedLimit * seedEffectiveRate) / (loop.seedsPerOutput || 1);
+              seedLimited = true;
+              break;
+            }
+            availableMachines[loop.seedMachineId] = seedLimit - seedMachineCount;
+            machineUsage.set(
+              loop.seedMachineId,
+              (machineUsage.get(loop.seedMachineId) || 0) + seedMachineCount
+            );
+          }
+          if (seedLimited) {
+            if (targetRate <= EPS) {
+              return {
+                node: { id: `n${nodeUid++}`, itemId, rate: 0, machineId: null, machineCount: 0, children: [] },
+                actualRate: 0,
+                rawUsage: new Map(),
+                machineUsage: new Map()
+              };
+            }
+            continue;
+          }
 
           for (const input of variant.inputs || []) {
             const reqRate = actualRate * input.qtyPerOutput;
             const child = buildTreeDiscrete(input.itemId, input.variant, reqRate, available, true);
             children.push(child.node);
             mergeRawUsage(rawUsage, child.rawUsage);
+            mergeMachineUsage(machineUsage, child.machineUsage);
             if (reqRate > EPS) {
               const supportedRate = child.actualRate / input.qtyPerOutput;
               minSupportedRate = Math.min(minSupportedRate, supportedRate);
@@ -1291,11 +1473,13 @@ const app = createApp({
 
           if (minSupportedRate < actualRate - EPS) {
             rollbackRawUsage(available, rawUsage);
+            rollbackMachineUsage(availableMachines, machineUsage);
             if (minSupportedRate <= EPS) {
               return {
                 node: { id: `n${nodeUid++}`, itemId, rate: 0, machineId: null, machineCount: 0, children: [] },
                 actualRate: 0,
-                rawUsage: new Map()
+                rawUsage: new Map(),
+                machineUsage: new Map()
               };
             }
             targetRate = minSupportedRate;
@@ -1315,7 +1499,8 @@ const app = createApp({
               children
             },
             actualRate,
-            rawUsage
+            rawUsage,
+            machineUsage
           };
         }
 
@@ -1323,7 +1508,8 @@ const app = createApp({
         return {
           node: { id: `n${nodeUid++}`, itemId, rate: 0, machineId: null, machineCount: 0, children: [] },
           actualRate: 0,
-          rawUsage: new Map()
+          rawUsage: new Map(),
+          machineUsage: new Map()
         };
       }
 
@@ -1479,10 +1665,22 @@ const app = createApp({
 
         const desired = parseFloat(target.rate);
         const desiredRate = Number.isFinite(desired) ? desired : null;
-        const maxRate = Math.max(0, pick.maxRate);
-        const requestedRate = target.maximize || desiredRate === null ? maxRate : Math.min(desiredRate, maxRate);
+        let maxRate = pick.maxRate;
+        if (!Number.isFinite(maxRate)) {
+          maxRate = Infinity;
+        } else {
+          maxRate = Math.max(0, maxRate);
+        }
+        const fallbackRate = pick.variant.effectiveOutputRate;
+        const useFallback = (!Number.isFinite(maxRate) || maxRate === Infinity)
+          && (target.maximize || desiredRate === null);
+        const requestedRate = useFallback
+          ? fallbackRate
+          : (target.maximize || desiredRate === null ? maxRate : Math.min(desiredRate, maxRate));
 
-        if (desiredRate !== null && desiredRate > maxRate + EPS) {
+        if (useFallback) {
+          addWarning(`Target "${itemId}" has no raw limits; using 1 machine output rate (${formatNumber(fallbackRate)} /s).`);
+        } else if (desiredRate !== null && desiredRate > maxRate + EPS) {
           addWarning(`Target "${itemId}" capped at ${formatNumber(maxRate)} /s by resources.`);
         }
 
@@ -1528,15 +1726,23 @@ const app = createApp({
         const used = rawUsage[supply.itemId] || 0;
         const availablePerMinute = parseFloat(supply.rate);
         if (used <= EPS && (!Number.isFinite(availablePerMinute) || availablePerMinute <= EPS)) continue;
-        const availPerMinute = Number.isFinite(availablePerMinute) ? availablePerMinute : 0;
+        const hasSupply = Number.isFinite(availablePerMinute) && availablePerMinute > EPS;
+        const availPerMinute = hasSupply ? availablePerMinute : 0;
         const usedPerMinute = used * 60;
-        const utilization = availPerMinute > 0 ? usedPerMinute / availPerMinute : 0;
+        const utilization = hasSupply && availPerMinute > 0 ? usedPerMinute / availPerMinute : 0;
         rawUsageList.push({
           itemId: supply.itemId,
           used: usedPerMinute,
           available: availPerMinute,
-          utilization
+          utilization,
+          unlimited: !hasSupply
         });
+      }
+
+      for (const entry of rawUsageList) {
+        if (!entry.unlimited) continue;
+        if (entry.used <= EPS) continue;
+        addWarning(`Raw "${entry.itemId}" supply is 0, treated as unlimited. Estimated usage: ${formatNumber(entry.used)} /min.`);
       }
 
       const graph = buildGraph(
@@ -2399,6 +2605,9 @@ const app = createApp({
           icon: item.icon || ""
         }));
 
+        state.machineLimits = {};
+        resetMachineLimits();
+
         const defaultTarget = craftableItems.value[0];
         state.targets = defaultTarget
           ? [{ uid: targetUid++, itemId: defaultTarget.id, rate: "", maximize: true }]
@@ -2437,6 +2646,7 @@ const app = createApp({
       displayGeneratorName,
       formatNumber,
       toggleLang,
+      resetMachineLimits,
       addTarget,
       removeTarget,
       moveTarget,
@@ -2444,10 +2654,15 @@ const app = createApp({
       updateFuel,
       generatorFuelOptions,
       craftableItems,
+      primaryMachineLimits,
+      secondaryMachineLimits,
       formatRatePerMinute,
       diagramZoomLabel,
       diagramRef,
       diagramTransform,
+      openGuide,
+      closeGuide,
+      onGuideBackdrop,
       toggleDiagramFullscreen,
       setDiagramOrientation,
       zoomIn,
