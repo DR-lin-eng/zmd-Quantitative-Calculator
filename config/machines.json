@@ -16,6 +16,68 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "allowed_categories": [],
       "allowed_items": [],
       "icon": "https://placehold.co/64x64/858683/ffffff?text=CMPT"
@@ -35,6 +97,138 @@
         4
       ],
       "kit_size": 24,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 3,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 4,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 5,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 3,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 4,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 5,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "allowed_categories": [],
       "allowed_items": [],
       "icon": "https://placehold.co/64x64/838081/ffffff?text=FILL"
@@ -54,6 +248,88 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 2,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        }
+      ],
       "allowed_categories": [],
       "allowed_items": [],
       "icon": "https://placehold.co/64x64/aa9c99/ffffff?text=FURN"
@@ -73,6 +349,18 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 2,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -96,6 +384,48 @@
         5
       ],
       "kit_size": 25,
+      "ports": [
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 4,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 4,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -118,6 +448,68 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "allowed_categories": [],
       "allowed_items": [],
       "icon": "https://placehold.co/64x64/929598/ffffff?text=GRIN"
@@ -160,6 +552,18 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -182,6 +586,108 @@
         5
       ],
       "kit_size": 25,
+      "ports": [
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 2,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 3,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 4,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 4,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 4,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -227,6 +733,38 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "mining": true,
       "allowed_categories": [],
       "allowed_items": [],
@@ -247,6 +785,38 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "mining": true,
       "allowed_categories": [],
       "allowed_items": [],
@@ -267,6 +837,48 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -290,6 +902,88 @@
         5
       ],
       "kit_size": 25,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 3,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 3,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 4,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 4,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -312,6 +1006,128 @@
         5
       ],
       "kit_size": 30,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 3,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 4,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 3,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 4,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 5,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 5,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -334,6 +1150,58 @@
         5
       ],
       "kit_size": 25,
+      "ports": [
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 4,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 4,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -356,6 +1224,98 @@
         5
       ],
       "kit_size": 25,
+      "ports": [
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 3,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 4,
+          "y": 3,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 4,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 3,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -378,6 +1338,118 @@
         5
       ],
       "kit_size": 25,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 3,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 4,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 2,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 3,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 4,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "allowed_categories": [],
       "allowed_items": [],
       "icon": "https://placehold.co/64x64/7c817e/ffffff?text=PLAN"
@@ -416,6 +1488,18 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 2,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -439,6 +1523,18 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "pipe",
+          "io": "out",
+          "x": 2,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -462,6 +1558,108 @@
         5
       ],
       "kit_size": 25,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 3,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 4,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 3,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 4,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "allowed_categories": [],
       "allowed_items": [],
       "icon": "https://placehold.co/64x64/747d76/ffffff?text=SEED"
@@ -527,6 +1725,78 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 2,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "allowed_categories": [],
       "allowed_items": [],
       "icon": "https://placehold.co/64x64/919291/ffffff?text=SHAP"
@@ -546,6 +1816,128 @@
         4
       ],
       "kit_size": 24,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 3,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 4,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 5,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 3,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 4,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 5,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "allowed_categories": [],
       "allowed_items": [],
       "icon": "https://placehold.co/64x64/8a8a89/ffffff?text=THIC"
@@ -565,6 +1957,128 @@
         4
       ],
       "kit_size": 24,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 3,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 4,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 5,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 3,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 4,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 5,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "allowed_categories": [],
       "allowed_items": [],
       "icon": "https://placehold.co/64x64/858a89/ffffff?text=TOOL"
@@ -584,6 +2098,128 @@
         4
       ],
       "kit_size": 24,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 3,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 4,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 5,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 3,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 4,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 5,
+          "y": 3,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "allowed_categories": [],
       "allowed_items": [],
       "icon": "https://placehold.co/64x64/959592/ffffff?text=WIND"
@@ -603,6 +2239,118 @@
         5
       ],
       "kit_size": 25,
+      "ports": [
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 0,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 1,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 2,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 3,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "in",
+          "x": 4,
+          "y": 0,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 2,
+          "dir": [
+            1,
+            0
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 0,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 1,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 2,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 3,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        },
+        {
+          "type": "belt",
+          "io": "out",
+          "x": 4,
+          "y": 4,
+          "dir": [
+            0,
+            1
+          ]
+        }
+      ],
       "locations": [
         "jinlong"
       ],
@@ -625,6 +2373,18 @@
         3
       ],
       "kit_size": 9,
+      "ports": [
+        {
+          "type": "pipe",
+          "io": "in",
+          "x": 0,
+          "y": 1,
+          "dir": [
+            1,
+            0
+          ]
+        }
+      ],
       "environment": true,
       "allowed_categories": [],
       "allowed_items": [],

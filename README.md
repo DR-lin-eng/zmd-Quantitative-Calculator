@@ -12,6 +12,7 @@
 - [Docker Deployment](#docker-deployment)
 - [Usage Guide](#usage-guide)
 - [Diagram Controls](#diagram-controls)
+- [Placement View](#placement-view--设备摆放)
 - [Project Structure](#project-structure)
 - [Calculation Rules](#calculation-rules)
 - [Configuration Schema](#configuration-schema)
@@ -102,6 +103,30 @@ Access at: **http://localhost:8000** (or port 18300 for prebuilt image)
 - 🖼️ **Fullscreen mode**: Expand the diagram to full screen
 - 🖱️ **Pan & Zoom**: Drag to pan inside the diagram area
 
+### Placement View | 设备摆放
+
+Click **生成摆放 / Generate layout** under the flow diagram to lay the calculated machines out on a grid
+(1 cell = 1 in-game tile). Footprints and port positions come from the game's building table.
+
+- **Auto arrange**: one building per whole machine, placed in rows that follow the production order.
+- **Ports and links**: belt ports are orange, pipe ports blue (inputs are drawn lighter). Belts and pipes are routed
+  automatically on separate layers; a port shared by several links gets a splitter/merger. Raw inputs
+  (green) and outputs (purple) stand in for depot/mining connections.
+- **Edit**: drag a machine to move it, press `R` (or the Rotate button) to turn the selected machine,
+  arrow keys nudge it. Moves and turns onto an occupied cell are refused.
+- **Save / Load / Export / Import**: positions are stored in the browser or as a `zmd-layout` JSON file.
+  A layout is matched to the current plan by recipe and machine index, so it survives recalculation as
+  long as the machine list is the same; unmatched machines keep their auto-arranged spot.
+
+Limits: the layout is a planning aid, not an optimal blueprint — it does not minimise area, and it
+ignores power pylons, depot bus ports and terrain. Links that cannot be routed are drawn as dashed red
+lines and counted under "Unconnected"; very large plans (several hundred machines) are routed only
+partly and say so.
+
+在流程图下方点击「生成摆放」，按计算结果把设备排到网格上（1 格 = 游戏内 1 格），占地与出入口位置取自游戏建筑表。
+支持自动排布、拖拽移动、`R` 键旋转（带占地碰撞检测）、自动连接传送带/管道，以及布局的保存、读取、导出、导入。
+摆放只是规划参考：不追求最小占地，也不考虑供电桩、仓库存取口和地形；连不上的线路用红色虚线标出。
+
 ### Project Structure
 
 ```
@@ -114,6 +139,9 @@ zmd-Quantitative-Calculator/
 ├── web/                 # Vue.js frontend
 │   ├── index.html       # Main HTML file
 │   ├── app.js           # Vue application logic
+│   ├── solver.js        # Global-optimum (LP) solver
+│   ├── layout.js        # Placement engine: footprints, collisions, belt/pipe routing
+│   ├── placement.js     # Placement view component
 │   └── styles.css       # Styling
 ├── server/              # FastAPI backend
 │   ├── main.py          # Server entry point
@@ -147,6 +175,7 @@ Logistics limits: belts `0.5 items/sec/port`, pipes `2 units/sec/port` (`logisti
 ```bash
 python scripts/update_config.py     # downloads game data to .cache/ and rewrites config/*.json
 node --test tests/test_solver.cjs   # solver tests against the generated config
+node --test tests/test_layout.cjs   # placement tests (ports, collisions, routing, save/restore)
 ```
 
 Data comes from [endfield-calc/factoriolab](https://github.com/endfield-calc/factoriolab) (curated

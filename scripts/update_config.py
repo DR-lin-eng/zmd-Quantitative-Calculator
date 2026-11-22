@@ -127,6 +127,24 @@ def ake_io(groups) -> dict:
     return out
 
 
+def building_ports(building: dict) -> list:
+    """Port cells and flow directions on the footprint grid: x to the right, y towards the output side."""
+    depth = building["range"]["depth"]
+    directions = {0: [0, -1], 90: [1, 0], 180: [0, 1], 270: [-1, 0]}
+    ports = []
+    for io, field in (("in", "inputPorts"), ("out", "outputPorts")):
+        for port in building.get(field, []):
+            pos = port["trans"]["position"]
+            ports.append({
+                "type": "pipe" if port.get("isPipe") else "belt",
+                "io": io,
+                "x": int(pos["x"]),
+                "y": depth - 1 - int(pos["z"]),
+                "dir": directions[int(round(port["trans"]["rotation"]["y"])) % 360],
+            })
+    return ports
+
+
 def pick_primary(recipe_id: str, outputs: dict, phases: dict) -> str:
     for out_id in outputs:
         if recipe_id == out_id or recipe_id.startswith(out_id + "-") or recipe_id.endswith("-" + out_id):
@@ -351,6 +369,7 @@ def main() -> None:
             "power": meta.get("usage", building.get("powerConsume", 0) if building else 0) or 0,
             "size": size or [1, 1],
             "kit_size": (size[0] * size[1]) if size else 1,
+            **({"ports": building_ports(building)} if building and size == [building["range"]["width"], building["range"]["depth"]] else {}),
             **({"locations": meta["locations"]} if meta.get("locations") else {}),
             **({"virtual": True} if machine_id.startswith("settlement-") or machine_id.endswith("_gate") else {}),
             **({"mining": True} if machine_id in MINING_MACHINES else {}),
@@ -380,6 +399,7 @@ def main() -> None:
             "power": building.get("powerConsume", 0),
             "size": size,
             "kit_size": size[0] * size[1],
+            "ports": building_ports(building),
             "environment": True,
             "allowed_categories": [],
             "allowed_items": [],

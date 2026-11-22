@@ -164,6 +164,8 @@
 
 - `input_ports` / `output_ports`：传送带口数量；`pipe_input_ports` / `pipe_output_ports`：管道口数量。
 - `size`：占地 `[宽, 深]`，`kit_size` 为两者乘积。
+- `ports`：出入口列表，供「设备摆放」使用。每项 `{ "type": "belt"|"pipe", "io": "in"|"out", "x", "y", "dir": [dx, dy] }`：
+  `x`/`y` 是占地网格内的格子（左上角为原点，`y` 朝出料侧增大），`dir` 是物料流动方向。没有 `ports` 的设备按口数量自动排在上下两侧。
 - `virtual`：不占地的虚拟设施（据点供货、净水节点），不计入机器汇总。
 - `mining`：采集设施（矿机、水泵、气泵），原料由“地图原料供给”填写，不参与计算。
 - `environment`：气体散布机。

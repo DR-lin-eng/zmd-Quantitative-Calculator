@@ -1098,6 +1098,55 @@ const app = createApp({
     }
 
     /** Layered flow graph for LP results: raw supplies first, each recipe one node, back edges dashed. */
+    // Classic results as recipe runs (inputs and outputs per second) for the placement view.
+    function classicPlacementRuns(roots) {
+      const runs = new Map();
+      const merge = (list, ios) => {
+        for (const io of ios) {
+          const known = list.find((entry) => entry.item === io.item);
+          if (known) known.rate += io.rate;
+          else list.push({ ...io });
+        }
+      };
+      const add = (itemId, machineId, count, inputs, outputs) => {
+        const key = `${itemId}@${machineId}`;
+        if (!runs.has(key)) runs.set(key, { recipeId: key, itemId, machineId, machineCount: 0, inputs: [], outputs: [] });
+        const run = runs.get(key);
+        run.machineCount += count;
+        merge(run.inputs, inputs);
+        merge(run.outputs, outputs);
+      };
+      const visit = (node) => {
+        if (!node) return;
+        if (node.machineId && node.machineCount > 0) {
+          const inputs = (node.inputSpecs || []).map((spec) => ({ item: spec.itemId, rate: node.rate * spec.qtyPerOutput }));
+          let gross = node.rate;
+          for (const loop of node.seedLoops || []) {
+            const wanted = node.rate * (loop.seedsPerOutput || 0);
+            const each = loop.seedRecipeEffectiveRate || getOutputRate(loop.seedRecipe);
+            const count = each > 0 ? Math.ceil(wanted / each - EPS) : 0;
+            if (count <= 0) continue;
+            const seedRate = Math.min(wanted, count * each);
+            const qty = loop.seedRecipe.output_qty || 1;
+            const seedInputs = (loop.seedRecipe.inputs || []).map((input) => ({ item: input.item, rate: seedRate * (input.qty / qty) }));
+            for (const io of seedInputs) if (io.item === node.itemId) gross += io.rate;
+            inputs.push({ item: loop.seedItemId, rate: seedRate });
+            add(loop.seedItemId, loop.seedMachineId, count, seedInputs, [{ item: loop.seedItemId, rate: seedRate }]);
+          }
+          add(node.itemId, node.machineId, node.machineCount, inputs, [{ item: node.itemId, rate: gross }]);
+        }
+        (node.children || []).forEach(visit);
+      };
+      (roots || []).forEach(visit);
+      return [...runs.values()];
+    }
+
+    const placementRuns = computed(() => {
+      const results = state.results;
+      if (!results) return [];
+      return results.mode === "lp" ? results.machineRuns : classicPlacementRuns(results.roots);
+    });
+
     function buildFlowGraph(runs, rawUsage, itemMap, orientation = "vertical") {
       if (!runs || runs.length === 0) return null;
       const NODE_W = 220;
@@ -3157,10 +3206,15 @@ const app = createApp({
       onDiagramPointerDown,
       onDiagramPointerMove,
       onDiagramPointerUp,
-      onDiagramWheel
+      onDiagramWheel,
+      placementRuns,
+      itemsById,
+      machinesById
     };
   }
 });
+
+if (window.PlacementView) app.component("placement-view", window.PlacementView);
 
 // Wait for DOM and Vue to be fully ready before mounting
 if (document.readyState === 'loading') {

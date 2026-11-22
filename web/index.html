@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600&family=Space+Grotesk:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20261122" />
+    <link rel="stylesheet" href="styles.css?v=20261122b" />
   </head>
   <body>
     <div id="app" class="app" v-cloak>
@@ -434,6 +434,18 @@
                 <div v-else class="empty">{{ t('noResults') }}</div>
               </div>
             </div>
+
+            <div class="section">
+              <placement-view
+                :runs="placementRuns"
+                :item-map="itemsById"
+                :machine-map="machinesById"
+                :logistics="logistics || {}"
+                :lang="lang"
+                :item-name="displayItemName"
+                :machine-name="displayMachineName"
+              ></placement-view>
+            </div>
           </template>
         </section>
       </main>
@@ -500,6 +512,8 @@
       });
     </script>
     <script src="solver.js?v=20261122"></script>
-    <script src="app.js?v=20261122"></script>
+    <script src="layout.js?v=20261122b"></script>
+    <script src="placement.js?v=20261122b"></script>
+    <script src="app.js?v=20261122b"></script>
   </body>
 </html>
