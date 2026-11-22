@@ -227,15 +227,22 @@ test("links sharing a port still connect when belts run along both sides of it",
 });
 
 test("buildings added to a restored layout never sit in front of a connected port", () => {
-  for (const [itemId, small, big] of [["iron_enr_bottle", 10, 20], ["quartz_enr", 10, 20], ["proc_battery_4", 6, 12]]) {
+  for (const [itemId, small, big] of [["iron_enr_bottle", 10, 20], ["glass_enr_bottle", 10, 20], ["quartz_enr", 10, 20], ["proc_battery_4", 6, 12]]) {
     const saved = layout.serialize(planFor(itemId, small).plan);
     const plan = planFor(itemId, big).plan;
     const outcome = layout.applySaved(plan, saved);
     assert.ok(outcome.matched > 0 && outcome.matched < outcome.total, `${itemId}: only part of the plan is restored`);
     layout.assignPorts(plan);
     const fronts = new Set();
+    const users = new Map();
     for (const link of plan.links) {
-      for (const port of [link.fromPort, link.toPort]) if (port) fronts.add(`${port.ox},${port.oy}`);
+      for (const port of [link.fromPort, link.toPort]) {
+        if (!port) continue;
+        const cell = `${port.ox},${port.oy}`;
+        fronts.add(cell);
+        assert.ok((users.get(cell) || port.id) === port.id, `${itemId}: two ports open onto the cell ${cell}`);
+        users.set(cell, port.id);
+      }
     }
     for (const building of plan.buildings) {
       const rect = layout.rectOf(building);

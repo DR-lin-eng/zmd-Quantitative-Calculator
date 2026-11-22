@@ -121,7 +121,10 @@
     return ids;
   }
 
-  // Test for a spot where `building` overlaps nothing and no port, its own or another machine's, is walled in.
+  /*
+   * Test for a spot where `building` overlaps nothing and every port keeps the cell in front of it to itself:
+   * not covered by a building, and not shared with a port of another machine (a belt needs that cell to turn).
+   */
   function clearance(plan, building) {
     const others = plan.buildings.filter((other) => other !== building && other.x !== null);
     const fronts = new Set();
@@ -136,7 +139,10 @@
       for (let yy = y; yy < y + size.h; yy++) {
         for (let xx = x; xx < x + size.w; xx++) if (fronts.has(`${xx},${yy}`)) return false;
       }
-      return !own.some(([dx, dy]) => rects.some((rect) => rectsOverlap(rect, { x: x + dx, y: y + dy, w: 1, h: 1 })));
+      return !own.some(
+        ([dx, dy]) =>
+          fronts.has(`${x + dx},${y + dy}`) || rects.some((rect) => rectsOverlap(rect, { x: x + dx, y: y + dy, w: 1, h: 1 }))
+      );
     };
   }
 
