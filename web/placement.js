@@ -408,6 +408,8 @@
       }
 
       function onKey(event) {
+        // Leave browser shortcuts such as Ctrl+R alone.
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
         const arrows = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
         if (event.key === "r" || event.key === "R") rotateSelected(event.shiftKey ? -1 : 1);
         else if (arrows[event.key]) nudge(...arrows[event.key]);
@@ -420,8 +422,24 @@
 
       function toggleFullscreen() {
         fullscreen.value = !fullscreen.value;
-        nextTick(fit);
       }
+
+      // Esc leaves fullscreen wherever the focus is (it is on the toolbar button right after entering).
+      function onWindowKey(event) {
+        if (event.key === "Escape" && fullscreen.value) fullscreen.value = false;
+      }
+
+      // A status message is written in the language it was shown in; drop it rather than leave it untranslated.
+      watch(
+        () => props.lang,
+        () => (message.value = "")
+      );
+
+      watch(fullscreen, (on) => {
+        document.body.classList.toggle("placement-fullscreen", on);
+        window[on ? "addEventListener" : "removeEventListener"]("keydown", onWindowKey);
+        nextTick(fit);
+      });
 
       function restore(saved) {
         const result = saved && plan.value ? Layout.applySaved(plan.value, saved) : null;
@@ -566,6 +584,8 @@
 
       onBeforeUnmount(() => {
         drag.value = null;
+        document.body.classList.remove("placement-fullscreen");
+        window.removeEventListener("keydown", onWindowKey);
       });
 
       return {

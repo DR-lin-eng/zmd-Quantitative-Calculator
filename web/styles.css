@@ -90,7 +90,8 @@ h1 {
   border-radius: var(--radius);
   padding: 24px;
   box-shadow: var(--shadow);
-  animation: rise 0.6s ease both;
+  /* "backwards" (not "both"): a transform left on the panel would trap the position: fixed fullscreen views inside it. */
+  animation: rise 0.6s ease backwards;
 }
 
 .controls {
@@ -299,7 +300,7 @@ select:focus {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  animation: rise 0.3s ease both;
+  animation: rise 0.3s ease backwards;
 }
 
 .guide-header {
@@ -557,7 +558,8 @@ td {
   flex-shrink: 0;
 }
 
-body.diagram-fullscreen {
+body.diagram-fullscreen,
+body.placement-fullscreen {
   overflow: hidden;
 }
 
