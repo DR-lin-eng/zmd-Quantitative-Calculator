@@ -7,6 +7,7 @@ const { createApp, reactive, computed, onMounted, onBeforeUnmount, toRefs, ref }
 
 const BELT_CAPACITY = 0.5;
 const EPS = 1e-9;
+const MAX_VARIANT_ATTEMPTS = 24;
 const DIAGRAM_ZOOM_MIN = 0.02;
 const DIAGRAM_ZOOM_MAX = 3;
 const DIAGRAM_ZOOM_STEP = 0.1;
@@ -1466,6 +1467,7 @@ const app = createApp({
             recipe: null,
             rawReq: new Map([[itemId, 1]]),
             machineUsage: new Map(),
+            machineNodes: new Map(),
             machineTotal: 0,
             depth: 0,
             inputs: [],
@@ -1555,6 +1557,10 @@ const app = createApp({
 
               const rawReq = new Map();
               const machineUsage = new Map();
+              // Tree nodes per machine: every node needs at least one whole machine.
+              const machineNodes = new Map();
+              const addNode = (machineId, count = 1) =>
+                machineNodes.set(machineId, (machineNodes.get(machineId) || 0) + count);
               let depth = 0;
               const inputsUsed = [];
 
@@ -1573,6 +1579,7 @@ const app = createApp({
                 for (const [machineId, qty] of choice.variant.machineUsage) {
                   machineUsage.set(machineId, (machineUsage.get(machineId) || 0) + qty * inputScale);
                 }
+                for (const [machineId, count] of choice.variant.machineNodes) addNode(machineId, count);
 
                 depth = Math.max(depth, choice.variant.depth);
               }
@@ -1580,6 +1587,7 @@ const app = createApp({
               if (machine) {
                 const machinePerUnit = 1 / effectiveRate;
                 machineUsage.set(machine.id, (machineUsage.get(machine.id) || 0) + machinePerUnit);
+                addNode(machine.id);
               }
 
               for (const loop of seedLoops) {
@@ -1593,6 +1601,7 @@ const app = createApp({
                   loop.seedMachineId,
                   (machineUsage.get(loop.seedMachineId) || 0) + machinePerUnit
                 );
+                addNode(loop.seedMachineId);
                 loop.seedsPerOutput = seedsPerOutput;
                 loop.machinePerUnit = machinePerUnit;
               }
@@ -1607,6 +1616,7 @@ const app = createApp({
                 recipe,
                 rawReq,
                 machineUsage,
+                machineNodes,
                 machineTotal,
                 depth: depth + 1,
                 inputs: inputsUsed,
@@ -1631,12 +1641,18 @@ const app = createApp({
         return variants;
       }
 
-      function pickBestVariant(itemId, available) {
-        const variants = expandVariants(itemId);
-        if (variants.length === 0) return null;
+      function isBetterPick(a, b) {
+        if (Math.abs(a.maxRate - b.maxRate) > EPS) return a.maxRate > b.maxRate;
+        if (Math.abs(a.variant.machineTotal - b.variant.machineTotal) > EPS) {
+          return a.variant.machineTotal < b.variant.machineTotal;
+        }
+        return a.variant.depth < b.variant.depth;
+      }
 
-        let best = null;
-        for (const variant of variants) {
+      /** Variants ordered best first, by the rate they allow before machine rounding. */
+      function rankVariants(itemId, available) {
+        const picks = [];
+        for (const variant of expandVariants(itemId)) {
           let maxRate = Infinity;
           for (const [rawId, qty] of variant.rawReq) {
             if (qty <= 0) continue;
@@ -1650,32 +1666,21 @@ const app = createApp({
               maxRate = Math.min(maxRate, limit / qty);
             }
           }
+          for (const [machineId, nodes] of variant.machineNodes) {
+            const limit = availableMachines[machineId];
+            if (Number.isFinite(limit) && nodes > limit) maxRate = 0;
+          }
           if (!Number.isFinite(maxRate)) maxRate = 0;
-
-          if (!best) {
-            best = { variant, maxRate };
-            continue;
-          }
-
-          if (maxRate > best.maxRate + EPS) {
-            best = { variant, maxRate };
-            continue;
-          }
-
-          if (Math.abs(maxRate - best.maxRate) <= EPS) {
-            if (variant.machineTotal < best.variant.machineTotal - EPS) {
-              best = { variant, maxRate };
-              continue;
-            }
-            if (Math.abs(variant.machineTotal - best.variant.machineTotal) <= EPS) {
-              if (variant.depth < best.variant.depth) {
-                best = { variant, maxRate };
-              }
-            }
-          }
+          picks.push({ variant, maxRate });
         }
-
-        return best;
+        // Insertion keeps the first of equal picks ahead, as the single-pick scan did.
+        const ranked = [];
+        for (const pick of picks) {
+          let index = ranked.length;
+          while (index > 0 && isBetterPick(pick, ranked[index - 1])) index--;
+          ranked.splice(index, 0, pick);
+        }
+        return ranked;
       }
 
       function consumeResources(variant, rate, available, rawUsage) {
@@ -2097,14 +2102,51 @@ const app = createApp({
         const itemId = target.itemId;
         if (!itemId) continue;
 
-        const pick = pickBestVariant(itemId, availableRaw);
-        if (!pick) {
+        const picks = rankVariants(itemId, availableRaw);
+        if (!picks.length) {
           addWarning(`No valid recipe path for "${itemId}".`);
           continue;
         }
 
         const desired = target.maximize ? NaN : parseFloat(target.rate) / 60;
         const desiredRate = Number.isFinite(desired) ? desired : null;
+
+        // The ranking ignores machine rounding, so the top pick can still build nothing.
+        // Fall back to the next picks before giving up on the target.
+        const before = {
+          raw: { ...availableRaw },
+          machines: { ...availableMachines },
+          warnings: warnings.length,
+          limitWarnings: new Set(machineLimitWarnings)
+        };
+        const restore = () => {
+          Object.assign(availableRaw, before.raw);
+          Object.assign(availableMachines, before.machines);
+          warnings.length = before.warnings;
+          machineLimitWarnings.clear();
+          before.limitWarnings.forEach((entry) => machineLimitWarnings.add(entry));
+        };
+        const wantsOutput = target.maximize || desiredRate === null || desiredRate > EPS;
+        const attempts = wantsOutput ? Math.min(picks.length, MAX_VARIANT_ATTEMPTS) : 1;
+        let built = null;
+        for (let attempt = 0; attempt < attempts; attempt++) {
+          if (attempt > 0) restore();
+          built = buildTarget(itemId, picks[attempt], desiredRate, target.maximize);
+          if (built.actualRate > EPS) break;
+        }
+        if (built.actualRate <= EPS && attempts > 1) {
+          restore();
+          built = buildTarget(itemId, picks[0], desiredRate, target.maximize);
+        }
+
+        outputs.push({ itemId, rate: built.actualRate });
+        roots.push(built.node);
+        for (const [rawId, qty] of built.rawUsage) {
+          rawUsage[rawId] = (rawUsage[rawId] || 0) + qty;
+        }
+      }
+
+      function buildTarget(itemId, pick, desiredRate, maximize) {
         let maxRate = pick.maxRate;
         if (!Number.isFinite(maxRate)) {
           maxRate = Infinity;
@@ -2113,10 +2155,10 @@ const app = createApp({
         }
         const fallbackRate = pick.variant.effectiveOutputRate;
         const useFallback = (!Number.isFinite(maxRate) || maxRate === Infinity)
-          && (target.maximize || desiredRate === null);
+          && (maximize || desiredRate === null);
         const requestedRate = useFallback
           ? fallbackRate
-          : (target.maximize || desiredRate === null ? maxRate : Math.min(desiredRate, maxRate));
+          : (maximize || desiredRate === null ? maxRate : Math.min(desiredRate, maxRate));
 
         if (useFallback) {
           addWarning(`Target "${itemId}" has no raw limits; using 1 machine output rate (${formatNumber(fallbackRate)} /s).`);
@@ -2130,12 +2172,7 @@ const app = createApp({
         if (desiredRate !== null && actualRate < desiredRate - EPS) {
           addWarning(`Target "${itemId}" capped at ${formatNumber(actualRate)} /s after rounding.`);
         }
-
-        outputs.push({ itemId, rate: actualRate });
-        roots.push(result.node);
-        for (const [rawId, qty] of result.rawUsage) {
-          rawUsage[rawId] = (rawUsage[rawId] || 0) + qty;
-        }
+        return result;
       }
 
       const { machineTotalsList, machineRuns } = collectMachineStats(roots);
