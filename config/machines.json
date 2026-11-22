@@ -1,196 +1,531 @@
 {
-  "version": 1,
+  "version": 2,
   "machines": [
     {
       "id": "cmpt_mc_1",
-      "name": "Cmpt Mc 1",
+      "name": "Fitting Unit",
       "name_zh": "配件机",
       "category": "machine",
       "input_ports": 3,
       "output_ports": 3,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
       "power": 20,
+      "size": [
+        3,
+        3
+      ],
       "kit_size": 9,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/848580/ffffff?text=CMPT"
-    },
-    {
-      "id": "dismantler_1",
-      "name": "Dismantler 1",
-      "name_zh": "拆解机",
-      "category": "machine",
-      "input_ports": 5,
-      "output_ports": 5,
-      "power": 20,
-      "kit_size": 24,
-      "allowed_categories": [],
-      "allowed_items": [],
-      "icon": "https://placehold.co/64x64/98988e/ffffff?text=DISM"
+      "icon": "https://placehold.co/64x64/858683/ffffff?text=CMPT"
     },
     {
       "id": "filling_pd_mc_1",
-      "name": "Filling Pd Mc 1",
+      "name": "Filling Unit",
       "name_zh": "灌装机",
       "category": "machine",
-      "input_ports": 5,
-      "output_ports": 5,
+      "input_ports": 6,
+      "output_ports": 6,
+      "pipe_input_ports": 1,
+      "pipe_output_ports": 0,
       "power": 20,
+      "size": [
+        6,
+        4
+      ],
       "kit_size": 24,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/808183/ffffff?text=FILL"
+      "icon": "https://placehold.co/64x64/838081/ffffff?text=FILL"
     },
     {
       "id": "furnance_1",
-      "name": "Furnance 1",
+      "name": "Refining Unit",
       "name_zh": "精炼炉",
       "category": "machine",
       "input_ports": 3,
       "output_ports": 3,
+      "pipe_input_ports": 1,
+      "pipe_output_ports": 1,
       "power": 5,
+      "size": [
+        3,
+        3
+      ],
       "kit_size": 9,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/aa9f99/ffffff?text=FURN"
+      "icon": "https://placehold.co/64x64/aa9c99/ffffff?text=FURN"
+    },
+    {
+      "id": "gas_pump_1",
+      "name": "Gas Extractor",
+      "name_zh": "气体收集泵",
+      "category": "machine",
+      "input_ports": 0,
+      "output_ports": 0,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 1,
+      "power": 0,
+      "size": [
+        3,
+        3
+      ],
+      "kit_size": 9,
+      "locations": [
+        "jinlong"
+      ],
+      "mining": true,
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/a5a6a0/ffffff?text=GASP"
+    },
+    {
+      "id": "gas_reactor_1",
+      "name": "Gas Reactor Globe",
+      "name_zh": "气体反应炉",
+      "category": "machine",
+      "input_ports": 0,
+      "output_ports": 0,
+      "pipe_input_ports": 2,
+      "pipe_output_ports": 2,
+      "power": 50,
+      "size": [
+        5,
+        5
+      ],
+      "kit_size": 25,
+      "locations": [
+        "jinlong"
+      ],
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/92948a/ffffff?text=GASR"
     },
     {
       "id": "grinder_1",
-      "name": "Grinder 1",
+      "name": "Shredding Unit",
       "name_zh": "粉碎机",
       "category": "machine",
       "input_ports": 3,
       "output_ports": 3,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
       "power": 5,
+      "size": [
+        3,
+        3
+      ],
       "kit_size": 9,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/939799/ffffff?text=GRIN"
+      "icon": "https://placehold.co/64x64/929598/ffffff?text=GRIN"
+    },
+    {
+      "id": "liquid_clean_gate",
+      "name": "Purification Node(Sewage Inlet)",
+      "name_zh": "净水节点(污水接入口)",
+      "category": "machine",
+      "input_ports": 0,
+      "output_ports": 0,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
+      "power": 0,
+      "size": [
+        1,
+        1
+      ],
+      "kit_size": 1,
+      "locations": [
+        "jinlong"
+      ],
+      "virtual": true,
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/989899/ffffff?text=LIQU"
+    },
+    {
+      "id": "liquid_cleaner_1",
+      "name": "Water Treatment Unit",
+      "name_zh": "废水处理机",
+      "category": "machine",
+      "input_ports": 0,
+      "output_ports": 0,
+      "pipe_input_ports": 1,
+      "pipe_output_ports": 0,
+      "power": 50,
+      "size": [
+        3,
+        3
+      ],
+      "kit_size": 9,
+      "locations": [
+        "jinlong"
+      ],
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/797c7d/ffffff?text=LIQU"
+    },
+    {
+      "id": "liquid_purifier_1",
+      "name": "Purification Unit",
+      "name_zh": "提纯机",
+      "category": "machine",
+      "input_ports": 5,
+      "output_ports": 0,
+      "pipe_input_ports": 3,
+      "pipe_output_ports": 2,
+      "power": 50,
+      "size": [
+        5,
+        5
+      ],
+      "kit_size": 25,
+      "locations": [
+        "jinlong"
+      ],
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/8f9192/ffffff?text=LIQU"
+    },
+    {
+      "id": "liquid_recycle_gate",
+      "name": "Purification Node(Byproduct Outlet)",
+      "name_zh": "净水节点(产物排出口)",
+      "category": "machine",
+      "input_ports": 0,
+      "output_ports": 0,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
+      "power": 0,
+      "size": [
+        1,
+        1
+      ],
+      "kit_size": 1,
+      "locations": [
+        "jinlong"
+      ],
+      "virtual": true,
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/989899/ffffff?text=LIQU"
     },
     {
       "id": "miner_2",
-      "name": "Miner 2",
+      "name": "Electric Mining Rig",
       "name_zh": "电驱矿机",
       "category": "machine",
       "input_ports": 0,
-      "output_ports": 1,
+      "output_ports": 3,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
       "power": 5,
-      "kit_size": 1,
+      "size": [
+        3,
+        3
+      ],
+      "kit_size": 9,
+      "mining": true,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/868785/ffffff?text=MINE"
+      "icon": "https://placehold.co/64x64/868585/ffffff?text=MINE"
     },
     {
       "id": "miner_3",
-      "name": "Miner 3",
+      "name": "Electric Mining Rig Mk II",
       "name_zh": "二型电驱矿机",
       "category": "machine",
       "input_ports": 0,
-      "output_ports": 1,
+      "output_ports": 3,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
       "power": 10,
-      "kit_size": 1,
+      "size": [
+        3,
+        3
+      ],
+      "kit_size": 9,
+      "mining": true,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/918a89/ffffff?text=MINE"
+      "icon": "https://placehold.co/64x64/938988/ffffff?text=MINE"
+    },
+    {
+      "id": "miner_4",
+      "name": "Hydro Mining Rig",
+      "name_zh": "水驱矿机",
+      "category": "machine",
+      "input_ports": 0,
+      "output_ports": 3,
+      "pipe_input_ports": 1,
+      "pipe_output_ports": 0,
+      "power": 0,
+      "size": [
+        3,
+        3
+      ],
+      "kit_size": 9,
+      "locations": [
+        "jinlong"
+      ],
+      "mining": true,
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/8d8e8a/ffffff?text=MINE"
     },
     {
       "id": "mix_pool_1",
-      "name": "Mix Pool 1",
+      "name": "Reactor Crucible",
       "name_zh": "反应池",
       "category": "machine",
-      "input_ports": 5,
-      "output_ports": 5,
+      "input_ports": 2,
+      "output_ports": 2,
+      "pipe_input_ports": 2,
+      "pipe_output_ports": 2,
       "power": 50,
+      "size": [
+        5,
+        5
+      ],
       "kit_size": 25,
+      "locations": [
+        "jinlong"
+      ],
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/898b8d/ffffff?text=MIXP"
+      "icon": "https://placehold.co/64x64/88898f/ffffff?text=MIXP"
+    },
+    {
+      "id": "mix_pool_2",
+      "name": "Expanded Crucible",
+      "name_zh": "扩容反应池",
+      "category": "machine",
+      "input_ports": 4,
+      "output_ports": 4,
+      "pipe_input_ports": 2,
+      "pipe_output_ports": 2,
+      "power": 100,
+      "size": [
+        6,
+        5
+      ],
+      "kit_size": 30,
+      "locations": [
+        "jinlong"
+      ],
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/858579/ffffff?text=MIXP"
+    },
+    {
+      "id": "phase_trans_1",
+      "name": "Fluid-Gas Transmuting Unit",
+      "name_zh": "液气转化机",
+      "category": "machine",
+      "input_ports": 0,
+      "output_ports": 0,
+      "pipe_input_ports": 3,
+      "pipe_output_ports": 2,
+      "power": 50,
+      "size": [
+        5,
+        5
+      ],
+      "kit_size": 25,
+      "locations": [
+        "jinlong"
+      ],
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/929492/ffffff?text=PHAS"
+    },
+    {
+      "id": "phase_trans_2",
+      "name": "Solid-Gas Transmuting Unit",
+      "name_zh": "固气转化机",
+      "category": "machine",
+      "input_ports": 2,
+      "output_ports": 2,
+      "pipe_input_ports": 3,
+      "pipe_output_ports": 2,
+      "power": 50,
+      "size": [
+        5,
+        5
+      ],
+      "kit_size": 25,
+      "locations": [
+        "jinlong"
+      ],
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/7c7e7e/ffffff?text=PHAS"
     },
     {
       "id": "planter_1",
-      "name": "Planter 1",
+      "name": "Planting Unit",
       "name_zh": "种植机",
       "category": "machine",
       "input_ports": 5,
       "output_ports": 5,
+      "pipe_input_ports": 1,
+      "pipe_output_ports": 0,
       "power": 20,
+      "size": [
+        5,
+        5
+      ],
       "kit_size": 25,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/7c827f/ffffff?text=PLAN"
+      "icon": "https://placehold.co/64x64/7c817e/ffffff?text=PLAN"
     },
     {
       "id": "power_sta_1",
-      "name": "Power Sta 1",
+      "name": "Thermal Bank",
       "name_zh": "热能池",
       "category": "machine",
-      "input_ports": 2,
+      "input_ports": 0,
       "output_ports": 0,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
       "power": 0,
+      "size": [
+        2,
+        2
+      ],
       "kit_size": 4,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/939da1/ffffff?text=POWE"
+      "icon": "https://placehold.co/64x64/919da1/ffffff?text=POWE"
     },
     {
       "id": "pump_1",
-      "name": "Pump 1",
+      "name": "Fluid Pump",
       "name_zh": "水泵",
       "category": "machine",
       "input_ports": 0,
-      "output_ports": 1,
+      "output_ports": 0,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 1,
       "power": 10,
-      "kit_size": 1,
+      "size": [
+        3,
+        3
+      ],
+      "kit_size": 9,
+      "locations": [
+        "jinlong"
+      ],
+      "mining": true,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/8f8d87/ffffff?text=PUMP"
+      "icon": "https://placehold.co/64x64/8e8f86/ffffff?text=PUMP"
+    },
+    {
+      "id": "pump_2",
+      "name": "Acid Resistant Pump Mk II",
+      "name_zh": "二型耐酸水泵",
+      "category": "machine",
+      "input_ports": 0,
+      "output_ports": 0,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 1,
+      "power": 20,
+      "size": [
+        3,
+        3
+      ],
+      "kit_size": 9,
+      "locations": [
+        "jinlong"
+      ],
+      "mining": true,
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/898279/ffffff?text=PUMP"
     },
     {
       "id": "seedcol_1",
-      "name": "Seedcol 1",
+      "name": "Seed-Picking Unit",
       "name_zh": "采种机",
       "category": "machine",
       "input_ports": 5,
       "output_ports": 5,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
       "power": 10,
+      "size": [
+        5,
+        5
+      ],
       "kit_size": 25,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/757c76/ffffff?text=SEED"
+      "icon": "https://placehold.co/64x64/747d76/ffffff?text=SEED"
     },
     {
       "id": "settlement-jinlong_coupon",
-      "name": "Settlement Jinlong Coupon",
+      "name": "Outpost Supplies(Wuling)",
       "name_zh": "据点供货(武陵)",
       "category": "machine",
-      "input_ports": 1,
-      "output_ports": 1,
+      "input_ports": 0,
+      "output_ports": 0,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
       "power": 0,
+      "size": [
+        1,
+        1
+      ],
       "kit_size": 1,
+      "locations": [
+        "jinlong"
+      ],
+      "virtual": true,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/8ca0a0/ffffff?text=SETT"
+      "icon": "https://placehold.co/64x64/8fa1a0/ffffff?text=SETT"
     },
     {
       "id": "settlement-tundra_coupon",
-      "name": "Settlement Tundra Coupon",
+      "name": "Outpost Supplies(Valley IV)",
       "name_zh": "据点供货(四号谷地)",
       "category": "machine",
-      "input_ports": 1,
-      "output_ports": 1,
+      "input_ports": 0,
+      "output_ports": 0,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
       "power": 0,
+      "size": [
+        1,
+        1
+      ],
       "kit_size": 1,
+      "locations": [
+        "tundra"
+      ],
+      "virtual": true,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/c5c8b4/ffffff?text=SETT"
+      "icon": "https://placehold.co/64x64/c5cab7/ffffff?text=SETT"
     },
     {
       "id": "shaper_1",
-      "name": "Shaper 1",
+      "name": "Moulding Unit",
       "name_zh": "塑形机",
       "category": "machine",
-      "input_ports": 5,
-      "output_ports": 5,
+      "input_ports": 3,
+      "output_ports": 3,
+      "pipe_input_ports": 1,
+      "pipe_output_ports": 0,
       "power": 10,
+      "size": [
+        3,
+        3
+      ],
       "kit_size": 9,
       "allowed_categories": [],
       "allowed_items": [],
@@ -198,55 +533,82 @@
     },
     {
       "id": "thickener_1",
-      "name": "Thickener 1",
+      "name": "Grinding Unit",
       "name_zh": "研磨机",
       "category": "machine",
-      "input_ports": 5,
-      "output_ports": 5,
+      "input_ports": 6,
+      "output_ports": 6,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
       "power": 50,
+      "size": [
+        6,
+        4
+      ],
       "kit_size": 24,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/898a8a/ffffff?text=THIC"
+      "icon": "https://placehold.co/64x64/8a8a89/ffffff?text=THIC"
     },
     {
       "id": "tools_asm_mc_1",
-      "name": "Tools Asm Mc 1",
+      "name": "Packaging Unit",
       "name_zh": "封装机",
       "category": "machine",
-      "input_ports": 5,
-      "output_ports": 5,
+      "input_ports": 6,
+      "output_ports": 6,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
       "power": 20,
+      "size": [
+        6,
+        4
+      ],
       "kit_size": 24,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/868888/ffffff?text=TOOL"
+      "icon": "https://placehold.co/64x64/858a89/ffffff?text=TOOL"
     },
     {
       "id": "winder_1",
-      "name": "Winder 1",
+      "name": "Gearing Unit",
       "name_zh": "装备原件机",
       "category": "machine",
-      "input_ports": 5,
-      "output_ports": 5,
+      "input_ports": 6,
+      "output_ports": 6,
+      "pipe_input_ports": 0,
+      "pipe_output_ports": 0,
       "power": 10,
+      "size": [
+        6,
+        4
+      ],
       "kit_size": 24,
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/979593/ffffff?text=WIND"
+      "icon": "https://placehold.co/64x64/959592/ffffff?text=WIND"
     },
     {
       "id": "xiranite_oven_1",
-      "name": "Xiranite Oven 1",
+      "name": "Forge of the Sky",
       "name_zh": "天有洪炉",
       "category": "machine",
       "input_ports": 5,
       "output_ports": 5,
+      "pipe_input_ports": 1,
+      "pipe_output_ports": 0,
       "power": 50,
+      "size": [
+        5,
+        5
+      ],
       "kit_size": 25,
+      "locations": [
+        "jinlong"
+      ],
       "allowed_categories": [],
       "allowed_items": [],
-      "icon": "https://placehold.co/64x64/a2a79a/ffffff?text=XIRA"
+      "icon": "https://placehold.co/64x64/a3a499/ffffff?text=XIRA"
     }
   ]
 }
