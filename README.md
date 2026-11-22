@@ -12,6 +12,7 @@
 - [Docker Deployment](#docker-deployment)
 - [Usage Guide](#usage-guide)
 - [Diagram Controls](#diagram-controls)
+- [Placement View](#placement-view--设备摆放)
 - [Project Structure](#project-structure)
 - [Calculation Rules](#calculation-rules)
 - [Configuration Schema](#configuration-schema)
@@ -102,6 +103,30 @@ Access at: **http://localhost:8000** (or port 18300 for prebuilt image)
 - 🖼️ **Fullscreen mode**: Expand the diagram to full screen
 - 🖱️ **Pan & Zoom**: Drag to pan inside the diagram area
 
+### Placement View | 设备摆放
+
+Click **生成摆放 / Generate layout** under the flow diagram to lay the calculated machines out on a grid
+(1 cell = 1 in-game tile). Footprints and port positions come from the game's building table.
+
+- **Auto arrange**: one building per whole machine, placed in rows that follow the production order.
+- **Ports and links**: belt ports are orange, pipe ports blue (inputs are drawn lighter). Belts and pipes are routed
+  automatically on separate layers; a port shared by several links gets a splitter/merger. Raw inputs
+  (green) and outputs (purple) stand in for depot/mining connections.
+- **Edit**: drag a machine to move it, press `R` (or the Rotate button) to turn the selected machine,
+  arrow keys nudge it. Moves and turns onto an occupied cell are refused.
+- **Save / Load / Export / Import**: positions are stored in the browser or as a `zmd-layout` JSON file.
+  A layout is matched to the current plan by recipe and machine index, so it survives recalculation as
+  long as the machine list is the same; unmatched machines keep their auto-arranged spot.
+
+Limits: the layout is a planning aid, not an optimal blueprint — it does not minimise area, and it
+ignores power pylons, depot bus ports and terrain. Links that cannot be routed are drawn as dashed red
+lines and counted under "Unconnected"; very large plans (several hundred machines) are routed only
+partly and say so.
+
+在流程图下方点击「生成摆放」，按计算结果把设备排到网格上（1 格 = 游戏内 1 格），占地与出入口位置取自游戏建筑表。
+支持自动排布、拖拽移动、`R` 键旋转（带占地碰撞检测）、自动连接传送带/管道，以及布局的保存、读取、导出、导入。
+摆放只是规划参考：不追求最小占地，也不考虑供电桩、仓库存取口和地形；连不上的线路用红色虚线标出。
+
 ### Project Structure
 
 ```
@@ -114,6 +139,9 @@ zmd-Quantitative-Calculator/
 ├── web/                 # Vue.js frontend
 │   ├── index.html       # Main HTML file
 │   ├── app.js           # Vue application logic
+│   ├── solver.js        # Global-optimum (LP) solver
+│   ├── layout.js        # Placement engine: footprints, collisions, belt/pipe routing
+│   ├── placement.js     # Placement view component
 │   └── styles.css       # Styling
 ├── server/              # FastAPI backend
 │   ├── main.py          # Server entry point
@@ -127,10 +155,34 @@ For detailed configuration schema, see: **[config/CONFIG_GUIDE.md](config/CONFIG
 
 ### Calculation Rules
 
-- **Belt throughput**: `0.5 items/sec/port`, used to cap per-machine output
-- **Multi-output machines**: Split evenly across outputs
-- **Multi-input machines**: Assume one belt per input item
-- **Kit grouping**: Machines are grouped by `kit_size`
+Two solvers are available under "Solver" / “计算方式”:
+
+- **Global optimum (default)** – `web/solver.js`, a dependency-free linear program. Every recipe is a
+  variable, so it mixes alternative recipes, reuses byproducts (sewage, acid), adds waste treatment
+  and shares raw materials across targets. Targets are optimised in priority order, then the plan
+  with the fewest machines / lowest power / least raw material is picked. Machine limits are kept as
+  whole machines per recipe; machine counts are rounded up, so the last machine of a recipe may idle.
+  The fewest-machines / lowest-power tie-break is evaluated before rounding up, so the displayed
+  whole-machine totals can be slightly above the true minimum.
+  Gas-environment recipes are charged one gas diffuser's minimum feed each.
+- **Classic** – the original greedy tree. It only follows each item's default recipe and ignores
+  byproducts, pipes and gas environments, so newer Wuling chains may not resolve.
+
+Logistics limits: belts `0.5 items/sec/port`, pipes `2 units/sec/port` (`logistics` in `items.json`).
+
+### Updating recipes | 更新配方
+
+```bash
+python scripts/update_config.py     # downloads game data to .cache/ and rewrites config/*.json
+node --test tests/test_solver.cjs   # solver tests against the generated config
+node --test tests/test_layout.cjs   # placement tests (ports, collisions, routing, save/restore)
+```
+
+Data comes from [endfield-calc/factoriolab](https://github.com/endfield-calc/factoriolab) (curated
+recipes) plus [AKEData](https://data.akedata.wiki) table dumps (newer recipes, ports, power, sizes,
+gas environments). The data version is recorded in `config/items.json` and shown in the page header.
+
+游戏更新后运行上面的脚本即可重新生成 `config/`，页面标题下会显示当前配方版本。
 
 ## Config schema (examples)
 

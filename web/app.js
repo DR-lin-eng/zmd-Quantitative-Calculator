@@ -7,6 +7,7 @@ const { createApp, reactive, computed, onMounted, onBeforeUnmount, toRefs, ref }
 
 const BELT_CAPACITY = 0.5;
 const EPS = 1e-9;
+const MAX_VARIANT_ATTEMPTS = 24;
 const DIAGRAM_ZOOM_MIN = 0.02;
 const DIAGRAM_ZOOM_MAX = 3;
 const DIAGRAM_ZOOM_STEP = 0.1;
@@ -68,7 +69,28 @@ const i18n = {
     outputRate: "产出速度",
     beltOutputUtil: "出口带宽利用",
     beltInputUtil: "入口带宽利用",
-    unlimited: "不限"
+    unlimited: "不限",
+    calcMode: "计算方式",
+    calcModeLp: "全局最优（线性规划）",
+    calcModeClassic: "经典（树形贪心）",
+    calcModeHint: "全局最优会混合多条配方、回收副产物并处理废水；经典模式只走默认配方。",
+    objective: "次要目标",
+    objectiveMachines: "机器最少",
+    objectivePower: "耗电最少",
+    objectiveRaw: "原料最省",
+    targetRate: "/分钟",
+    otherSupplies: "农场 / 牧场原料",
+    byproducts: "富余副产物",
+    byproductsHint: "未被消耗的产物，可入库或另行处理",
+    colItem: "物品",
+    colMachine: "机器",
+    colUsed: "消耗",
+    colAvailable: "供给",
+    colUtil: "利用率",
+    disposalTag: "处理",
+    environmentTag: "环境",
+    useEnvironments: "允许气体环境配方（需气体散布机）",
+    gameVersion: "配方版本"
   },
   en: {
     title: "Infrastructure Production Calculator",
@@ -126,7 +148,28 @@ const i18n = {
     outputRate: "Output Rate",
     beltOutputUtil: "Output Belt Util",
     beltInputUtil: "Input Belt Util",
-    unlimited: "Unlimited"
+    unlimited: "Unlimited",
+    calcMode: "Solver",
+    calcModeLp: "Global optimum (linear programming)",
+    calcModeClassic: "Classic (greedy tree)",
+    calcModeHint: "Global optimum mixes recipes, reuses byproducts and treats waste; classic only follows default recipes.",
+    objective: "Tie-breaker",
+    objectiveMachines: "Fewest machines",
+    objectivePower: "Lowest power",
+    objectiveRaw: "Least raw material",
+    targetRate: "/min",
+    otherSupplies: "Farm / ranch materials",
+    byproducts: "Surplus byproducts",
+    byproductsHint: "Produced but not consumed; store or handle separately",
+    colItem: "Item",
+    colMachine: "Machine",
+    colUsed: "Used",
+    colAvailable: "Available",
+    colUtil: "Util",
+    disposalTag: "Disposal",
+    environmentTag: "Environment",
+    useEnvironments: "Allow gas-environment recipes (needs a gas diffuser)",
+    gameVersion: "Data"
   }
 };
 
@@ -149,7 +192,14 @@ const app = createApp({
       warnings: [],
       diagramFullscreen: false,
       diagramOrientation: "vertical",
-      diagramZoom: 1
+      diagramZoom: 1,
+      disposal: [],
+      logistics: null,
+      environments: [],
+      useEnvironments: true,
+      calcMode: "lp",
+      objective: "machines",
+      gameVersion: ""
     });
 
     let targetUid = 1;
@@ -201,9 +251,22 @@ const app = createApp({
 
     const mapOnlyItems = computed(() => state.items.filter((item) => item.map_only));
     const supplyItems = computed(() => state.items.filter((item) => item.map_only && !item.startup_only));
-    const craftableItems = computed(() => state.items.filter((item) => !item.map_only));
+    const craftableItems = computed(() => state.items.filter((item) => !item.map_only && item.recipes.length > 0));
+    // The classic tree solver only follows default recipes; alternative routes are left to the LP solver.
+    const classicItemsById = computed(() => {
+      const map = {};
+      for (const item of state.items) {
+        const defaults = item.recipes.filter((recipe) => !recipe.alt);
+        // It does not model gas diffusers either, so environment recipes are a last resort.
+        const plain = defaults.filter((recipe) => !recipe.env);
+        map[item.id] = { ...item, recipes: plain.length ? plain : defaults };
+      }
+      return map;
+    });
+    const mainSupplies = computed(() => state.supplies.filter((supply) => !supply.group));
+    const extraSupplies = computed(() => state.supplies.filter((supply) => supply.group));
     const primaryMachineLimits = computed(() => state.machines.filter((machine) => machine.id === "xiranite_oven_1"));
-    const secondaryMachineLimits = computed(() => state.machines.filter((machine) => machine.id !== "xiranite_oven_1"));
+    const secondaryMachineLimits = computed(() => state.machines.filter((machine) => machine.id !== "xiranite_oven_1" && !machine.mining && !machine.virtual && !machine.environment));
 
     const generatorFuelOptions = computed(() => {
       const gen = generatorsById.value[state.selectedGeneratorId];
@@ -243,6 +306,12 @@ const app = createApp({
         return gen.name_zh || gen.name || gen.id;
       }
       return gen.name || gen.name_zh || gen.id;
+    }
+
+    function displayEnvName(envId) {
+      const env = state.environments.find((entry) => entry.id === envId);
+      if (!env) return envId;
+      return state.lang === "zh" ? env.name_zh || env.name || envId : env.name || env.name_zh || envId;
     }
 
     function resetMachineLimits() {
@@ -645,7 +714,18 @@ const app = createApp({
     }
 
     function updateDiagramGraph(options = {}) {
-      if (!state.results || !state.results.roots) return;
+      if (!state.results) return;
+      if (state.results.mode === "lp") {
+        state.results.graph = buildFlowGraph(
+          state.results.machineRuns,
+          state.results.flowRawUsage,
+          itemsById.value,
+          state.diagramOrientation
+        );
+        if (options.resetView) resetDiagramView();
+        return;
+      }
+      if (!state.results.roots) return;
       const graph = buildGraph(
         state.results.roots,
         itemsById.value,
@@ -933,7 +1013,417 @@ const app = createApp({
 
     function recalculate() {
       if (state.items.length === 0) return;
+      if (state.calcMode === "lp" && typeof FactorySolver !== "undefined") {
+        recalculateLp();
+      } else {
+        recalculateClassic();
+      }
+    }
+
+    function computePower(totalMachinePower) {
+      const basePower = Number.isFinite(parseFloat(state.basePower)) ? parseFloat(state.basePower) : 0;
+      const totalPower = totalMachinePower + basePower;
+      let powerPerGenerator = 0;
+      let generatorCount = 0;
+      let fuelRate = 0;
+      const gen = generatorsById.value[state.selectedGeneratorId];
+      if (gen && gen.fuel_power && state.selectedFuelId) {
+        powerPerGenerator = gen.fuel_power[state.selectedFuelId] || 0;
+        if (powerPerGenerator > 0) {
+          generatorCount = Math.ceil(totalPower / powerPerGenerator);
+          fuelRate = generatorCount * (gen.fuel_rate_per_sec || 0);
+        }
+      }
+      return { basePower, totalPower, powerPerGenerator, generatorCount, fuelRate };
+    }
+
+    function buildRawUsageList(rawUsage) {
+      const list = [];
+      for (const supply of state.supplies) {
+        const used = rawUsage[supply.itemId] || 0;
+        const availablePerMinute = parseFloat(supply.rate);
+        const hasSupply = Number.isFinite(availablePerMinute) && availablePerMinute > EPS;
+        if (used <= EPS && !hasSupply) continue;
+        const usedPerMinute = used * 60;
+        list.push({
+          itemId: supply.itemId,
+          used: usedPerMinute,
+          available: hasSupply ? availablePerMinute : 0,
+          utilization: hasSupply ? usedPerMinute / availablePerMinute : 0,
+          unlimited: !hasSupply
+        });
+      }
+      return list;
+    }
+
+    function warningText(warning) {
+      if (typeof warning === "string") return warning;
+      const name = warning.itemId ? displayItemName(warning.itemId) : "";
+      const perMin = (value) => formatRatePerMinute(value);
+      const zh = state.lang === "zh";
+      switch (warning.code) {
+        case "unbounded":
+          return zh
+            ? `「${name}」没有任何原料或机器限制，按 1 台机器的产能 (${perMin(warning.rate)} /min) 计算。`
+            : `"${name}" is not limited by any supply or machine; using one machine's output (${perMin(warning.rate)} /min).`;
+        case "target_short":
+          return zh
+            ? `「${name}」只能达到 ${perMin(warning.rate)} /min（目标 ${perMin(warning.wanted)} /min），受原料或机器限制。`
+            : `"${name}" reaches only ${perMin(warning.rate)} /min of ${perMin(warning.wanted)} /min (limited by supply or machines).`;
+        case "target_zero":
+          return zh ? `「${name}」在当前限制下无法生产。` : `"${name}" cannot be produced under the current limits.`;
+        case "fluid_surplus":
+          return zh
+            ? `流体「${name}」有 ${perMin(warning.rate)} /min 无处排放，会堵塞管道，请放开废水处理或相关原料限制。`
+            : `Fluid "${name}" has ${perMin(warning.rate)} /min with nowhere to go and will block pipes.`;
+        case "limit_rounded":
+          return zh
+            ? "机器数量上限下的配方分配为近似取整，结果可能略低于理论最优。"
+            : "Machine-limit allocation was rounded heuristically; the result may be slightly below the optimum.";
+        case "unlimited_raw":
+          return zh
+            ? `原料「${name}」供给为 0，按不限处理，估算消耗 ${formatNumber(warning.used)} /min。`
+            : `Raw "${name}" supply is 0 and treated as unlimited. Estimated usage: ${formatNumber(warning.used)} /min.`;
+        case "env_used": {
+          const envName = displayEnvName(warning.envId);
+          return zh
+            ? `方案使用了「${envName}」配方：相关的 ${warning.machines} 台机器需完全位于气体散布机范围内。已计入 1 台散布机的最低通气量（${name} ${perMin(warning.rate)} /min），一台罩不住时每多一台再加同样的量。`
+            : `The plan uses "${envName}" recipes: ${warning.machines} machine(s) must sit fully inside a gas diffuser's range. One diffuser's minimum feed (${name} ${perMin(warning.rate)} /min) is included; add the same again for every extra diffuser.`;
+        }
+        case "unknown_item":
+          return zh ? `未知物品 ${warning.itemId}` : `Unknown item ${warning.itemId}`;
+        default:
+          return warning.code || "";
+      }
+    }
+
+    /** Layered flow graph for LP results: raw supplies first, each recipe one node, back edges dashed. */
+    // Classic results as recipe runs (inputs and outputs per second) for the placement view.
+    function classicPlacementRuns(roots) {
+      const runs = new Map();
+      const merge = (list, ios) => {
+        for (const io of ios) {
+          const known = list.find((entry) => entry.item === io.item);
+          if (known) known.rate += io.rate;
+          else list.push({ ...io });
+        }
+      };
+      const add = (itemId, machineId, count, inputs, outputs) => {
+        const key = `${itemId}@${machineId}`;
+        if (!runs.has(key)) runs.set(key, { recipeId: key, itemId, machineId, machineCount: 0, inputs: [], outputs: [] });
+        const run = runs.get(key);
+        run.machineCount += count;
+        merge(run.inputs, inputs);
+        merge(run.outputs, outputs);
+      };
+      const visit = (node) => {
+        if (!node) return;
+        if (node.machineId && node.machineCount > 0) {
+          const inputs = (node.inputSpecs || []).map((spec) => ({ item: spec.itemId, rate: node.rate * spec.qtyPerOutput }));
+          let gross = node.rate;
+          for (const loop of node.seedLoops || []) {
+            const wanted = node.rate * (loop.seedsPerOutput || 0);
+            const each = loop.seedRecipeEffectiveRate || getOutputRate(loop.seedRecipe);
+            const count = each > 0 ? Math.ceil(wanted / each - EPS) : 0;
+            if (count <= 0) continue;
+            const seedRate = Math.min(wanted, count * each);
+            const qty = loop.seedRecipe.output_qty || 1;
+            const seedInputs = (loop.seedRecipe.inputs || []).map((input) => ({ item: input.item, rate: seedRate * (input.qty / qty) }));
+            for (const io of seedInputs) if (io.item === node.itemId) gross += io.rate;
+            inputs.push({ item: loop.seedItemId, rate: seedRate });
+            add(loop.seedItemId, loop.seedMachineId, count, seedInputs, [{ item: loop.seedItemId, rate: seedRate }]);
+          }
+          add(node.itemId, node.machineId, node.machineCount, inputs, [{ item: node.itemId, rate: gross }]);
+        }
+        (node.children || []).forEach(visit);
+      };
+      (roots || []).forEach(visit);
+      return [...runs.values()];
+    }
+
+    const placementRuns = computed(() => {
+      const results = state.results;
+      if (!results) return [];
+      return results.mode === "lp" ? results.machineRuns : classicPlacementRuns(results.roots);
+    });
+
+    function buildFlowGraph(runs, rawUsage, itemMap, orientation = "vertical") {
+      if (!runs || runs.length === 0) return null;
+      const NODE_W = 220;
+      const NODE_H = 72;
+      const GAP = 36;
+      const LAYER_GAP = 96;
+      const MARGIN = 40;
+      const horizontal = orientation === "horizontal";
+
+      const nodes = [];
+      const producers = {};
+      const consumers = {};
+      const addTo = (map, key, value) => (map[key] = map[key] || []).push(value);
+      for (const [itemId, used] of Object.entries(rawUsage)) {
+        if (used <= EPS) continue;
+        const node = { id: `raw:${itemId}`, itemId, rate: used, isRaw: true, preds: [], succs: [] };
+        nodes.push(node);
+        addTo(producers, itemId, node);
+      }
+      for (const run of runs) {
+        const node = {
+          id: `run:${run.recipeId}`,
+          itemId: run.itemId,
+          rate: run.rate,
+          machineId: run.machineId,
+          machineCount: run.virtual ? 0 : run.machineCount,
+          isDisposal: run.disposal || !!run.environment,
+          preds: [],
+          succs: []
+        };
+        nodes.push(node);
+        for (const io of run.outputs) addTo(producers, io.item, node);
+        for (const io of run.inputs) addTo(consumers, io.item, node);
+      }
+
+      const edges = [];
+      for (const itemId of Object.keys(consumers)) {
+        for (const from of producers[itemId] || []) {
+          for (const to of consumers[itemId]) {
+            if (from === to) continue;
+            const edge = { from, to, itemId, back: false };
+            edges.push(edge);
+            from.succs.push(edge);
+          }
+        }
+      }
+
+      // Depth-first search marks edges that close a cycle; they are ignored for layering.
+      const visitState = new Map();
+      const roots = nodes.filter((node) => node.isRaw).concat(nodes.filter((node) => !node.isRaw));
+      for (const root of roots) {
+        if (visitState.has(root)) continue;
+        const stack = [[root, 0]];
+        visitState.set(root, 1);
+        while (stack.length) {
+          const frame = stack[stack.length - 1];
+          const edge = frame[0].succs[frame[1]++];
+          if (!edge) {
+            visitState.set(frame[0], 2);
+            stack.pop();
+            continue;
+          }
+          const seen = visitState.get(edge.to);
+          if (seen === 1) {
+            edge.back = true;
+          } else if (!seen) {
+            visitState.set(edge.to, 1);
+            stack.push([edge.to, 0]);
+          }
+        }
+      }
+      for (const edge of edges) {
+        if (!edge.back) edge.to.preds.push(edge);
+      }
+      const depthOf = (node) => {
+        if (node.depth !== undefined) return node.depth;
+        node.depth = 0;
+        let depth = node.isRaw ? 0 : 1;
+        for (const edge of node.preds) depth = Math.max(depth, depthOf(edge.from) + 1);
+        node.depth = depth;
+        return depth;
+      };
+      const layers = [];
+      for (const node of nodes) {
+        const depth = depthOf(node);
+        (layers[depth] = layers[depth] || []).push(node);
+      }
+
+      const compact = layers.filter(Boolean);
+      let maxSpan = 0;
+      const cross = horizontal ? NODE_H : NODE_W;
+      const along = horizontal ? NODE_W : NODE_H;
+      compact.forEach((layer, index) => {
+        if (index > 0) {
+          for (const node of layer) {
+            const anchors = node.preds.filter((edge) => edge.from.pos !== undefined).map((edge) => edge.from.pos);
+            node.order = anchors.length ? anchors.reduce((a, b) => a + b, 0) / anchors.length : 0;
+          }
+          layer.sort((a, b) => a.order - b.order);
+        }
+        const span = layer.length * cross + (layer.length - 1) * GAP;
+        maxSpan = Math.max(maxSpan, span);
+        layer.forEach((node, i) => {
+          node.pos = i * (cross + GAP) - span / 2;
+          node.layer = index;
+        });
+      });
+
+      const nodeMap = {};
+      const graphNodes = nodes.map((node) => {
+        const c = node.pos + maxSpan / 2 + cross / 2 + MARGIN;
+        const a = node.layer * (along + LAYER_GAP) + along / 2 + MARGIN;
+        const item = itemMap[node.itemId] || {};
+        const out = {
+          id: node.id,
+          x: horizontal ? a : c,
+          y: horizontal ? c : a,
+          itemId: node.itemId,
+          machineId: node.machineId,
+          machineCount: node.machineCount,
+          rate: node.rate,
+          icon: item.icon || "",
+          isRaw: !!node.isRaw,
+          isDisposal: !!node.isDisposal
+        };
+        nodeMap[node.id] = out;
+        return out;
+      });
+
+      const phaseColor = { liquid: "#38bdf8", gas: "#a78bfa" };
+      const links = edges.map((edge) => {
+        const from = nodeMap[edge.from.id];
+        const to = nodeMap[edge.to.id];
+        const color = phaseColor[(itemMap[edge.itemId] || {}).phase] || "";
+        if (edge.back) {
+          if (horizontal) {
+            const y1 = from.y + NODE_H / 2;
+            const y2 = to.y + NODE_H / 2;
+            const bend = Math.max(y1, y2) + 60;
+            return { path: `M ${from.x} ${y1} C ${from.x} ${bend} ${to.x} ${bend} ${to.x} ${y2}`, loop: true, color };
+          }
+          const x1 = from.x + NODE_W / 2;
+          const x2 = to.x + NODE_W / 2;
+          const bend = Math.max(x1, x2) + 80;
+          return { path: `M ${x1} ${from.y} C ${bend} ${from.y} ${bend} ${to.y} ${x2} ${to.y}`, loop: true, color };
+        }
+        if (horizontal) {
+          const x1 = from.x + NODE_W / 2;
+          const x2 = to.x - NODE_W / 2;
+          const mid = (x1 + x2) / 2;
+          return { path: `M ${x1} ${from.y} C ${mid} ${from.y} ${mid} ${to.y} ${x2} ${to.y}`, color };
+        }
+        const y1 = from.y + NODE_H / 2;
+        const y2 = to.y - NODE_H / 2;
+        const mid = (y1 + y2) / 2;
+        return { path: `M ${from.x} ${y1} C ${from.x} ${mid} ${to.x} ${mid} ${to.x} ${y2}`, color };
+      });
+
+      const crossSize = maxSpan + MARGIN * 2 + 100;
+      const alongSize = compact.length * along + (compact.length - 1) * LAYER_GAP + MARGIN * 2 + (horizontal ? 0 : 0);
+      return {
+        width: horizontal ? alongSize : crossSize,
+        height: horizontal ? crossSize : alongSize,
+        nodeSize: { width: NODE_W, height: NODE_H },
+        nodes: graphNodes,
+        links
+      };
+    }
+
+    function recalculateLp() {
       const itemMap = itemsById.value;
+      const machineMap = machinesById.value;
+      const logistics = state.logistics || {};
+      const belt = logistics.belt_per_sec || BELT_CAPACITY;
+      const pipe = logistics.pipe_per_sec || 2;
+
+      const supplies = {};
+      for (const supply of state.supplies) {
+        const perMinute = parseFloat(supply.rate);
+        supplies[supply.itemId] = Number.isFinite(perMinute) && perMinute > EPS ? perMinute / 60 : Infinity;
+      }
+      const machineLimits = {};
+      for (const machine of state.machines) {
+        const limit = parseFloat(state.machineLimits[machine.id]);
+        if (Number.isFinite(limit) && limit >= 0 && !machine.virtual) machineLimits[machine.id] = limit;
+      }
+      const targets = state.targets
+        .filter((target) => target.itemId)
+        .map((target) => {
+          const perMinute = parseFloat(target.rate);
+          const fixed = !target.maximize && Number.isFinite(perMinute) && perMinute >= 0;
+          return { itemId: target.itemId, rate: fixed ? perMinute / 60 : null, maximize: !fixed };
+        });
+
+      const solved = FactorySolver.solve({
+        items: state.items,
+        disposal: state.disposal,
+        machines: state.machines,
+        logistics: state.logistics,
+        environments: state.environments,
+        disabledEnvs: state.useEnvironments ? [] : state.environments.map((env) => env.id),
+        supplies,
+        machineLimits,
+        targets,
+        objective: state.objective
+      });
+
+      const isFluid = (itemId) => {
+        const phase = (itemMap[itemId] || {}).phase;
+        return phase === "liquid" || phase === "gas";
+      };
+      const portUtil = (ios, machine, machineCount, beltPorts, pipePorts) => {
+        let solid = 0;
+        let fluid = 0;
+        for (const io of ios) {
+          if (isFluid(io.item)) fluid += io.rate;
+          else solid += io.rate;
+        }
+        const count = Math.max(1, machineCount);
+        let util = 0;
+        if (beltPorts > 0) util = Math.max(util, solid / count / (beltPorts * belt));
+        if (pipePorts > 0) util = Math.max(util, fluid / count / (pipePorts * pipe));
+        return util;
+      };
+
+      const machineTotals = {};
+      const machineRuns = solved.runs.map((run) => {
+        const machine = machineMap[run.machineId] || {};
+        const virtual = !!machine.virtual;
+        if (!virtual) {
+          const entry = machineTotals[run.machineId] || {
+            machineId: run.machineId,
+            count: 0,
+            powerPerMachine: machine.power || 0,
+            kitSize: machine.kit_size || 1
+          };
+          entry.count += run.machineCount;
+          machineTotals[run.machineId] = entry;
+        }
+        return {
+          ...run,
+          virtual,
+          machineCount: virtual ? 0 : run.machineCount,
+          outputUtil: virtual ? 0 : portUtil(run.outputs, machine, run.machineCount, machine.output_ports || 0, machine.pipe_output_ports || 0),
+          inputUtil: virtual ? 0 : portUtil(run.inputs, machine, run.machineCount, machine.input_ports || 0, machine.pipe_input_ports || 0)
+        };
+      });
+      const machineTotalsList = Object.values(machineTotals).map((entry) => ({
+        ...entry,
+        kitCount: entry.kitSize > 0 ? Math.ceil(entry.count / entry.kitSize) : 0,
+        totalPower: entry.count * entry.powerPerMachine
+      }));
+
+      const power = computePower(machineTotalsList.reduce((sum, entry) => sum + entry.totalPower, 0));
+      const rawUsageList = buildRawUsageList(solved.rawUsage);
+      const warnings = solved.warnings.slice();
+      for (const entry of rawUsageList) {
+        if (entry.unlimited && entry.used > EPS) warnings.push({ code: "unlimited_raw", itemId: entry.itemId, used: entry.used });
+      }
+
+      state.results = {
+        mode: "lp",
+        ...power,
+        outputs: solved.outputs,
+        rawUsage: rawUsageList,
+        byproducts: solved.surplus,
+        machineTotals: machineTotalsList,
+        machineRuns,
+        flowRawUsage: solved.rawUsage,
+        graph: buildFlowGraph(machineRuns, solved.rawUsage, itemMap, state.diagramOrientation)
+      };
+      state.warnings = warnings;
+      resetDiagramView();
+    }
+
+    function recalculateClassic() {
+      const itemMap = classicItemsById.value;
       const machineMap = machinesById.value;
 
       const warnings = [];
@@ -1026,6 +1516,7 @@ const app = createApp({
             recipe: null,
             rawReq: new Map([[itemId, 1]]),
             machineUsage: new Map(),
+            machineNodes: new Map(),
             machineTotal: 0,
             depth: 0,
             inputs: [],
@@ -1115,6 +1606,10 @@ const app = createApp({
 
               const rawReq = new Map();
               const machineUsage = new Map();
+              // Tree nodes per machine: every node needs at least one whole machine.
+              const machineNodes = new Map();
+              const addNode = (machineId, count = 1) =>
+                machineNodes.set(machineId, (machineNodes.get(machineId) || 0) + count);
               let depth = 0;
               const inputsUsed = [];
 
@@ -1133,6 +1628,7 @@ const app = createApp({
                 for (const [machineId, qty] of choice.variant.machineUsage) {
                   machineUsage.set(machineId, (machineUsage.get(machineId) || 0) + qty * inputScale);
                 }
+                for (const [machineId, count] of choice.variant.machineNodes) addNode(machineId, count);
 
                 depth = Math.max(depth, choice.variant.depth);
               }
@@ -1140,6 +1636,7 @@ const app = createApp({
               if (machine) {
                 const machinePerUnit = 1 / effectiveRate;
                 machineUsage.set(machine.id, (machineUsage.get(machine.id) || 0) + machinePerUnit);
+                addNode(machine.id);
               }
 
               for (const loop of seedLoops) {
@@ -1153,6 +1650,7 @@ const app = createApp({
                   loop.seedMachineId,
                   (machineUsage.get(loop.seedMachineId) || 0) + machinePerUnit
                 );
+                addNode(loop.seedMachineId);
                 loop.seedsPerOutput = seedsPerOutput;
                 loop.machinePerUnit = machinePerUnit;
               }
@@ -1167,6 +1665,7 @@ const app = createApp({
                 recipe,
                 rawReq,
                 machineUsage,
+                machineNodes,
                 machineTotal,
                 depth: depth + 1,
                 inputs: inputsUsed,
@@ -1191,12 +1690,18 @@ const app = createApp({
         return variants;
       }
 
-      function pickBestVariant(itemId, available) {
-        const variants = expandVariants(itemId);
-        if (variants.length === 0) return null;
+      function isBetterPick(a, b) {
+        if (Math.abs(a.maxRate - b.maxRate) > EPS) return a.maxRate > b.maxRate;
+        if (Math.abs(a.variant.machineTotal - b.variant.machineTotal) > EPS) {
+          return a.variant.machineTotal < b.variant.machineTotal;
+        }
+        return a.variant.depth < b.variant.depth;
+      }
 
-        let best = null;
-        for (const variant of variants) {
+      /** Variants ordered best first, by the rate they allow before machine rounding. */
+      function rankVariants(itemId, available) {
+        const picks = [];
+        for (const variant of expandVariants(itemId)) {
           let maxRate = Infinity;
           for (const [rawId, qty] of variant.rawReq) {
             if (qty <= 0) continue;
@@ -1210,32 +1715,21 @@ const app = createApp({
               maxRate = Math.min(maxRate, limit / qty);
             }
           }
+          for (const [machineId, nodes] of variant.machineNodes) {
+            const limit = availableMachines[machineId];
+            if (Number.isFinite(limit) && nodes > limit) maxRate = 0;
+          }
           if (!Number.isFinite(maxRate)) maxRate = 0;
-
-          if (!best) {
-            best = { variant, maxRate };
-            continue;
-          }
-
-          if (maxRate > best.maxRate + EPS) {
-            best = { variant, maxRate };
-            continue;
-          }
-
-          if (Math.abs(maxRate - best.maxRate) <= EPS) {
-            if (variant.machineTotal < best.variant.machineTotal - EPS) {
-              best = { variant, maxRate };
-              continue;
-            }
-            if (Math.abs(variant.machineTotal - best.variant.machineTotal) <= EPS) {
-              if (variant.depth < best.variant.depth) {
-                best = { variant, maxRate };
-              }
-            }
-          }
+          picks.push({ variant, maxRate });
         }
-
-        return best;
+        // Insertion keeps the first of equal picks ahead, as the single-pick scan did.
+        const ranked = [];
+        for (const pick of picks) {
+          let index = ranked.length;
+          while (index > 0 && isBetterPick(pick, ranked[index - 1])) index--;
+          ranked.splice(index, 0, pick);
+        }
+        return ranked;
       }
 
       function consumeResources(variant, rate, available, rawUsage) {
@@ -1657,14 +2151,51 @@ const app = createApp({
         const itemId = target.itemId;
         if (!itemId) continue;
 
-        const pick = pickBestVariant(itemId, availableRaw);
-        if (!pick) {
+        const picks = rankVariants(itemId, availableRaw);
+        if (!picks.length) {
           addWarning(`No valid recipe path for "${itemId}".`);
           continue;
         }
 
-        const desired = parseFloat(target.rate);
+        const desired = target.maximize ? NaN : parseFloat(target.rate) / 60;
         const desiredRate = Number.isFinite(desired) ? desired : null;
+
+        // The ranking ignores machine rounding, so the top pick can still build nothing.
+        // Fall back to the next picks before giving up on the target.
+        const before = {
+          raw: { ...availableRaw },
+          machines: { ...availableMachines },
+          warnings: warnings.length,
+          limitWarnings: new Set(machineLimitWarnings)
+        };
+        const restore = () => {
+          Object.assign(availableRaw, before.raw);
+          Object.assign(availableMachines, before.machines);
+          warnings.length = before.warnings;
+          machineLimitWarnings.clear();
+          before.limitWarnings.forEach((entry) => machineLimitWarnings.add(entry));
+        };
+        const wantsOutput = target.maximize || desiredRate === null || desiredRate > EPS;
+        const attempts = wantsOutput ? Math.min(picks.length, MAX_VARIANT_ATTEMPTS) : 1;
+        let built = null;
+        for (let attempt = 0; attempt < attempts; attempt++) {
+          if (attempt > 0) restore();
+          built = buildTarget(itemId, picks[attempt], desiredRate, target.maximize);
+          if (built.actualRate > EPS) break;
+        }
+        if (built.actualRate <= EPS && attempts > 1) {
+          restore();
+          built = buildTarget(itemId, picks[0], desiredRate, target.maximize);
+        }
+
+        outputs.push({ itemId, rate: built.actualRate });
+        roots.push(built.node);
+        for (const [rawId, qty] of built.rawUsage) {
+          rawUsage[rawId] = (rawUsage[rawId] || 0) + qty;
+        }
+      }
+
+      function buildTarget(itemId, pick, desiredRate, maximize) {
         let maxRate = pick.maxRate;
         if (!Number.isFinite(maxRate)) {
           maxRate = Infinity;
@@ -1673,10 +2204,10 @@ const app = createApp({
         }
         const fallbackRate = pick.variant.effectiveOutputRate;
         const useFallback = (!Number.isFinite(maxRate) || maxRate === Infinity)
-          && (target.maximize || desiredRate === null);
+          && (maximize || desiredRate === null);
         const requestedRate = useFallback
           ? fallbackRate
-          : (target.maximize || desiredRate === null ? maxRate : Math.min(desiredRate, maxRate));
+          : (maximize || desiredRate === null ? maxRate : Math.min(desiredRate, maxRate));
 
         if (useFallback) {
           addWarning(`Target "${itemId}" has no raw limits; using 1 machine output rate (${formatNumber(fallbackRate)} /s).`);
@@ -1690,12 +2221,7 @@ const app = createApp({
         if (desiredRate !== null && actualRate < desiredRate - EPS) {
           addWarning(`Target "${itemId}" capped at ${formatNumber(actualRate)} /s after rounding.`);
         }
-
-        outputs.push({ itemId, rate: actualRate });
-        roots.push(result.node);
-        for (const [rawId, qty] of result.rawUsage) {
-          rawUsage[rawId] = (rawUsage[rawId] || 0) + qty;
-        }
+        return result;
       }
 
       const { machineTotalsList, machineRuns } = collectMachineStats(roots);
@@ -2596,12 +3122,17 @@ const app = createApp({
         const generatorsData = await generatorsRes.json();
 
         state.items = normalizeItems(itemsData.items || []);
+        state.disposal = itemsData.disposal || [];
+        state.logistics = itemsData.logistics || null;
+        state.environments = itemsData.environments || [];
+        state.gameVersion = itemsData.game_version || "";
         state.machines = machinesData.machines || [];
         state.generators = generatorsData.generators || [];
 
         state.supplies = supplyItems.value.map((item) => ({
           itemId: item.id,
           rate: 0,
+          group: item.group || "",
           icon: item.icon || ""
         }));
 
@@ -2651,9 +3182,13 @@ const app = createApp({
       removeTarget,
       moveTarget,
       recalculate,
+      warningText,
+      displayEnvName,
       updateFuel,
       generatorFuelOptions,
       craftableItems,
+      mainSupplies,
+      extraSupplies,
       primaryMachineLimits,
       secondaryMachineLimits,
       formatRatePerMinute,
@@ -2671,10 +3206,15 @@ const app = createApp({
       onDiagramPointerDown,
       onDiagramPointerMove,
       onDiagramPointerUp,
-      onDiagramWheel
+      onDiagramWheel,
+      placementRuns,
+      itemsById,
+      machinesById
     };
   }
 });
+
+if (window.PlacementView) app.component("placement-view", window.PlacementView);
 
 // Wait for DOM and Vue to be fully ready before mounting
 if (document.readyState === 'loading') {

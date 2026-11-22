@@ -1,55 +1,65 @@
 {
-  "version": 1,
+  "version": 2,
   "generators": [
     {
       "id": "power_originium_ore",
-      "name": "Power Originium Ore",
+      "name": "Power(Originium Ore)",
       "name_zh": "发电(源矿)",
       "fuel_rate_per_sec": 0.125,
       "fuel_power": {
         "originium_ore": 50
       },
-      "icon": "https://placehold.co/64x64/929595/ffffff?text=POWE"
+      "icon": "https://placehold.co/64x64/919696/ffffff?text=POWE"
     },
     {
       "id": "power_proc_battery_1",
-      "name": "Power Proc Battery 1",
+      "name": "Power(LC Valley Battery)",
       "name_zh": "发电(低容谷地电池)",
       "fuel_rate_per_sec": 0.025,
       "fuel_power": {
         "proc_battery_1": 220
       },
-      "icon": "https://placehold.co/64x64/99a1a4/ffffff?text=POWE"
+      "icon": "https://placehold.co/64x64/99a1a7/ffffff?text=POWE"
     },
     {
       "id": "power_proc_battery_2",
-      "name": "Power Proc Battery 2",
+      "name": "Power(SC Valley Battery)",
       "name_zh": "发电(中容谷地电池)",
       "fuel_rate_per_sec": 0.025,
       "fuel_power": {
         "proc_battery_2": 420
       },
-      "icon": "https://placehold.co/64x64/98a0a5/ffffff?text=POWE"
+      "icon": "https://placehold.co/64x64/99a0a5/ffffff?text=POWE"
     },
     {
       "id": "power_proc_battery_3",
-      "name": "Power Proc Battery 3",
+      "name": "Power(HC Valley Battery)",
       "name_zh": "发电(高容谷地电池)",
       "fuel_rate_per_sec": 0.025,
       "fuel_power": {
         "proc_battery_3": 1100
       },
-      "icon": "https://placehold.co/64x64/98a0a4/ffffff?text=POWE"
+      "icon": "https://placehold.co/64x64/9aa2a4/ffffff?text=POWE"
     },
     {
       "id": "power_proc_battery_4",
-      "name": "Power Proc Battery 4",
+      "name": "Power(LC Wuling Battery)",
       "name_zh": "发电(低容武陵电池)",
       "fuel_rate_per_sec": 0.025,
       "fuel_power": {
         "proc_battery_4": 1600
       },
-      "icon": "https://placehold.co/64x64/919d9f/ffffff?text=POWE"
+      "icon": "https://placehold.co/64x64/919f9d/ffffff?text=POWE"
+    },
+    {
+      "id": "power_proc_battery_5",
+      "name": "Power(SC Wuling Battery)",
+      "name_zh": "发电(中容武陵电池)",
+      "fuel_rate_per_sec": 0.025,
+      "fuel_power": {
+        "proc_battery_5": 3200
+      },
+      "icon": "https://placehold.co/64x64/8d999a/ffffff?text=POWE"
     }
   ]
 }
