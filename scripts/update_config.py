@@ -67,16 +67,25 @@ ENV_NAMES = {
 }
 
 
-def fetch(url: str, dest: Path, offline: bool) -> Path:
-    if dest.exists() and dest.stat().st_size > 0:
+def fetch(url: str, dest: Path, offline: bool, mutable: bool = False) -> Path:
+    """Download into the cache. `mutable` URLs (branch heads, the manifest) are refreshed when online."""
+    cached = dest.exists() and dest.stat().st_size > 0
+    if cached and (offline or not mutable):
         return dest
     if offline:
         raise SystemExit(f"--offline but missing cache file: {dest}")
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"download {url}")
     req = urllib.request.Request(url, headers={"User-Agent": "zmd-quantitative-calculator"})
-    with urllib.request.urlopen(req, timeout=120) as res:
-        dest.write_bytes(res.read())
+    try:
+        with urllib.request.urlopen(req, timeout=120) as res:
+            body = res.read()
+    except OSError as error:
+        if not cached:
+            raise
+        print(f"warning: could not refresh {url} ({error}); using the cached copy")
+        return dest
+    dest.write_bytes(body)
     return dest
 
 
@@ -137,15 +146,13 @@ def main() -> None:
     # ---- load sources -------------------------------------------------
     up_dir = args.cache / "upstream" / args.upstream_ref
     for name, rel in UPSTREAM_FILES.items():
-        fetch(f"https://raw.githubusercontent.com/{UPSTREAM_REPO}/{args.upstream_ref}/{rel}", up_dir / name, args.offline)
+        fetch(f"https://raw.githubusercontent.com/{UPSTREAM_REPO}/{args.upstream_ref}/{rel}", up_dir / name, args.offline, mutable=True)
     data = load(up_dir / "data.json")
     en = load(up_dir / "en.json")
     base_version = next(iter(data.get("version", {}).values()), "").lstrip("v")
 
     manifest_path = args.cache / "akedata" / "manifest.json"
-    if not args.offline and manifest_path.exists():
-        manifest_path.unlink()
-    manifest = load(fetch(f"{AKE_BASE}/manifest.json", manifest_path, args.offline))
+    manifest = load(fetch(f"{AKE_BASE}/manifest.json", manifest_path, args.offline, mutable=True))
     versions = {v["id"]: v for v in manifest["versions"]}
     latest = versions[manifest["latest"] if args.ake_version == "latest" else args.ake_version]
     base = next((v for v in manifest["versions"] if v["gameVersion"] == base_version), None)
