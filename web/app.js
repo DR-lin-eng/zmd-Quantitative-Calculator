@@ -1288,7 +1288,7 @@ const app = createApp({
         .filter((target) => target.itemId)
         .map((target) => {
           const perMinute = parseFloat(target.rate);
-          const fixed = !target.maximize && Number.isFinite(perMinute) && perMinute > 0;
+          const fixed = !target.maximize && Number.isFinite(perMinute) && perMinute >= 0;
           return { itemId: target.itemId, rate: fixed ? perMinute / 60 : null, maximize: !fixed };
         });
 

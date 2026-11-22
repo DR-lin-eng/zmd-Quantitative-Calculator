@@ -440,7 +440,8 @@
         warnings.push({ code: "unknown_item", itemId: target.itemId });
         continue;
       }
-      const rate = Number.isFinite(target.rate) && target.rate > 0 ? target.rate : null;
+      // A fixed rate of 0 means "make none"; only a missing rate falls back to maximising.
+      const rate = Number.isFinite(target.rate) && target.rate >= 0 ? target.rate : null;
       targets.push({ itemId: target.itemId, rate, maximize: !!target.maximize || rate === null });
     }
 
@@ -479,7 +480,7 @@
       if (!target.maximize && rate < target.rate * (1 - 1e-6)) {
         warnings.push({ code: "target_short", itemId: target.itemId, rate, wanted: target.rate });
       }
-      if (rate <= 0) warnings.push({ code: "target_zero", itemId: target.itemId });
+      if (rate <= 0 && (target.maximize || target.rate > 0)) warnings.push({ code: "target_zero", itemId: target.itemId });
       return { itemId: target.itemId, rate };
     });
 

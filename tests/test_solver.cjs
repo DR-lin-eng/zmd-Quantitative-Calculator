@@ -134,3 +134,17 @@ test("gas environments charge one diffuser and are skipped when the gas is missi
     close(result.outputs[0].rate * 60, 30, "still produced by the non-environment recipe");
   }
 });
+
+test("a fixed rate of zero makes nothing and leaves the raw for later targets", () => {
+  const supplies = { iron_ore: 60 };
+  const result = solve(
+    [
+      { itemId: "iron_cmpt", rate: 0 },
+      { itemId: "iron_nugget", maximize: true }
+    ],
+    supplies
+  );
+  close(result.outputs[0].rate, 0, "zero target");
+  close(result.outputs[1].rate * 60, 60, "later target gets all the ore");
+  assert.ok(!result.warnings.some((warning) => warning.itemId === "iron_cmpt"));
+});
