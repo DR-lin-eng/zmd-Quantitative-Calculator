@@ -121,13 +121,36 @@
     return ids;
   }
 
+  // Test for a spot where `building` overlaps nothing and no port, its own or another machine's, is walled in.
+  function clearance(plan, building) {
+    const others = plan.buildings.filter((other) => other !== building && other.x !== null);
+    const fronts = new Set();
+    for (const other of others) {
+      if (other.kind === "machine") worldPorts(other).forEach((port) => fronts.add(`${port.ox},${port.oy}`));
+    }
+    const rects = others.map((other) => rectOf(other));
+    const own = building.kind === "machine" ? worldPorts({ ...building, x: 0, y: 0 }).map((port) => [port.ox, port.oy]) : [];
+    const size = sizeOf(building);
+    return (x, y) => {
+      if (collides(plan, building, x, y, building.rot)) return false;
+      for (let yy = y; yy < y + size.h; yy++) {
+        for (let xx = x; xx < x + size.w; xx++) if (fronts.has(`${xx},${yy}`)) return false;
+      }
+      return !own.some(([dx, dy]) => rects.some((rect) => rectsOverlap(rect, { x: x + dx, y: y + dy, w: 1, h: 1 })));
+    };
+  }
+
+  // Closest spot to (x, y) that is free and keeps every port reachable; failing that, one that is merely free.
   function nearestFree(plan, building, x, y, radius = 40) {
-    if (!collides(plan, building, x, y, building.rot)) return [x, y];
-    for (let r = 1; r <= radius; r++) {
-      for (let dx = -r; dx <= r; dx++) {
-        for (let dy = -r; dy <= r; dy++) {
-          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-          if (!collides(plan, building, x + dx, y + dy, building.rot)) return [x + dx, y + dy];
+    const tests = [clearance(plan, building), (cx, cy) => !collides(plan, building, cx, cy, building.rot)];
+    for (const fits of tests) {
+      if (fits(x, y)) return [x, y];
+      for (let r = 1; r <= radius; r++) {
+        for (let dx = -r; dx <= r; dx++) {
+          for (let dy = -r; dy <= r; dy++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+            if (fits(x + dx, y + dy)) return [x + dx, y + dy];
+          }
         }
       }
     }
@@ -980,8 +1003,14 @@
     // Machines the file does not know keep their spot; markers it does not know go next to their machine.
     const markers = new Set();
     for (const building of loose) {
-      if (building.kind !== "machine") markers.add(building.id);
-      else if (building.x !== null) [building.x, building.y] = nearestFree(plan, building, building.x, building.y);
+      if (building.kind === "machine") continue;
+      markers.add(building.id);
+      building.x = building.y = null;
+    }
+    for (const building of loose) {
+      if (building.kind === "machine" && building.x !== null) {
+        [building.x, building.y] = nearestFree(plan, building, building.x, building.y);
+      }
     }
     if (markers.size) placeMarkers(plan, null, markers);
     return { matched, total: plan.buildings.length, unknown: stored.size - matched };
