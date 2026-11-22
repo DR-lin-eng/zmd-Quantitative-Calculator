@@ -134,6 +134,8 @@ Two solvers are available under "Solver" / “计算方式”:
   and shares raw materials across targets. Targets are optimised in priority order, then the plan
   with the fewest machines / lowest power / least raw material is picked. Machine limits are kept as
   whole machines per recipe; machine counts are rounded up, so the last machine of a recipe may idle.
+  The fewest-machines / lowest-power tie-break is evaluated before rounding up, so the displayed
+  whole-machine totals can be slightly above the true minimum.
   Gas-environment recipes are charged one gas diffuser's minimum feed each.
 - **Classic** – the original greedy tree. It only follows each item's default recipe and ignores
   byproducts, pipes and gas environments, so newer Wuling chains may not resolve.
