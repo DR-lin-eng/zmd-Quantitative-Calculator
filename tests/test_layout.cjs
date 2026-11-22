@@ -182,6 +182,19 @@ test("a layout saved for another plan keeps what matches and never overlaps the 
   assert.strictEqual(layout.applySaved(bigger, null), null);
 });
 
+test("links sharing ports are grouped by rate so no port is overloaded needlessly", () => {
+  for (const [itemId, perMinute] of [["proc_battery_2", 15], ["proc_battery_3", 15], ["proc_battery_5", 30]]) {
+    const { plan } = planFor(itemId, perMinute);
+    const overloaded = layout.assignPorts(plan);
+    assert.strictEqual(overloaded.length, 0, `${itemId} ${perMinute}/min`);
+    const shared = new Map();
+    for (const link of plan.links) {
+      for (const port of [link.fromPort, link.toPort]) if (port) shared.set(port.id, (shared.get(port.id) || 0) + 1);
+    }
+    assert.ok([...shared.values()].some((count) => count > 1), "the plan has ports shared by several links");
+  }
+});
+
 test("blocked links are reported instead of dropped", () => {
   const { plan } = planFor("proc_battery_4", 6);
   const link = plan.links.find((entry) => entry.fromPort && entry.toPort);

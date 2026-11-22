@@ -333,6 +333,46 @@
   }
 
   /*
+   * Splits more links than ports over the ports so that the busiest port carries as little as possible.
+   * Links stay in order (neighbours share a port) unless only a free regrouping avoids an overload.
+   */
+  function sharePorts(rates, ports, cap) {
+    const n = rates.length;
+    const sum = [0];
+    for (const rate of rates) sum.push(sum[sum.length - 1] + rate);
+    const best = Array.from({ length: ports + 1 }, () => new Float64Array(n + 1).fill(Infinity));
+    const cut = Array.from({ length: ports + 1 }, () => new Int32Array(n + 1));
+    best[0][0] = 0;
+    for (let k = 1; k <= ports; k++) {
+      for (let i = k; i <= n; i++) {
+        for (let j = k - 1; j < i; j++) {
+          const worst = Math.max(best[k - 1][j], sum[i] - sum[j]);
+          if (worst < best[k][i]) {
+            best[k][i] = worst;
+            cut[k][i] = j;
+          }
+        }
+      }
+    }
+    const picked = new Array(n);
+    for (let k = ports, i = n; k > 0; k--) {
+      const j = cut[k][i];
+      for (let at = j; at < i; at++) picked[at] = k - 1;
+      i = j;
+    }
+    if (best[ports][n] <= cap * (1 + 1e-4)) return picked;
+    const load = new Array(ports).fill(0);
+    const free = new Array(n);
+    const order = rates.map((_, index) => index).sort((a, b) => rates[b] - rates[a]);
+    for (const index of order) {
+      const port = load.indexOf(Math.min(...load));
+      free[index] = port;
+      load[port] += rates[index];
+    }
+    return Math.max(...load) < best[ports][n] - EPS ? free : picked;
+  }
+
+  /*
    * Gives every link a port on both machines (link.fromPort / link.toPort; null for depot markers).
    * Links that outnumber the ports share them, which the router turns into splitters / mergers.
    */
@@ -379,7 +419,8 @@
         loose.forEach((entry, i) => (entry.link[field] = free[i]));
       } else {
         const all = known.concat(loose);
-        all.forEach((entry, i) => (entry.link[field] = ports[Math.floor((i * ports.length) / all.length)]));
+        const picked = sharePorts(all.map((entry) => entry.link.rate), ports.length, plan.caps[group.type]);
+        all.forEach((entry, i) => (entry.link[field] = ports[picked[i]]));
       }
       const load = new Map();
       for (const link of group.links) load.set(link[field], (load.get(link[field]) || 0) + link.rate);
