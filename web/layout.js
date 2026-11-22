@@ -333,11 +333,17 @@
   }
 
   /*
-   * Splits more links than ports over the ports so that the busiest port carries as little as possible.
-   * Links stay in order (neighbours share a port) unless only a free regrouping avoids an overload.
+   * Splits more links than ports over the ports. Links stay in order, so neighbours share a port.
+   * An even split is kept when no port is overloaded: it shares the outer ports first, which have room to branch.
+   * Otherwise the busiest port carries as little as possible, regrouping freely if only that avoids an overload.
    */
   function sharePorts(rates, ports, cap) {
     const n = rates.length;
+    const limit = cap * (1 + 1e-4);
+    const even = rates.map((_, index) => Math.floor((index * ports) / n));
+    const evenLoad = new Array(ports).fill(0);
+    even.forEach((port, index) => (evenLoad[port] += rates[index]));
+    if (Math.max(...evenLoad) <= limit) return even;
     const sum = [0];
     for (const rate of rates) sum.push(sum[sum.length - 1] + rate);
     const best = Array.from({ length: ports + 1 }, () => new Float64Array(n + 1).fill(Infinity));
@@ -360,7 +366,7 @@
       for (let at = j; at < i; at++) picked[at] = k - 1;
       i = j;
     }
-    if (best[ports][n] <= cap * (1 + 1e-4)) return picked;
+    if (best[ports][n] <= limit) return picked;
     const load = new Array(ports).fill(0);
     const free = new Array(n);
     const order = rates.map((_, index) => index).sort((a, b) => rates[b] - rates[a]);
@@ -716,9 +722,13 @@
         heap.push((cost + estimate(state >> 2)) * 4194304 + state, state);
       };
       for (const start of starts) {
-        if (start.cell < 0 || !allowed(start.cell) || grid.occ[start.cell] !== FREE) continue;
+        if (start.cell < 0 || !allowed(start.cell)) continue;
+        // A branch may leave a splitter straight across a neighbouring belt, or a port flanked by belts could not share.
+        const occ = grid.occ[start.cell];
+        const crossable = (occ === STRAIGHT_H && start.d % 2 === 0) || (occ === STRAIGHT_V && start.d % 2 === 1);
+        if (occ !== FREE && !crossable) continue;
         if (grid.lane[start.cell] && !own.has(grid.lane[start.cell]) && start.d % 2 === grid.laneAxis[start.cell]) continue;
-        visit(start.cell * 4 + start.d, start.cost, -1 - start.index);
+        visit(start.cell * 4 + start.d, start.cost + (occ !== FREE ? CROSS_COST : 0), -1 - start.index);
       }
       while (heap.size) {
         const state = heap.pop();

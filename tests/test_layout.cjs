@@ -217,6 +217,15 @@ test("links sharing ports are grouped by rate so no port is overloaded needlessl
   }
 });
 
+test("links sharing a port still connect when belts run along both sides of it", () => {
+  for (const perMinute of [20, 30]) {
+    const { plan } = planFor("inn_drink_2", perMinute);
+    const routed = layout.route(plan);
+    assert.strictEqual(routed.stats.unrouted, 0, `${perMinute}/min`);
+    assert.strictEqual(routed.stats.overloaded, 0, `${perMinute}/min`);
+  }
+});
+
 test("blocked links are reported instead of dropped", () => {
   const { plan } = planFor("proc_battery_4", 6);
   const link = plan.links.find((entry) => entry.fromPort && entry.toPort);
