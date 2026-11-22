@@ -227,7 +227,7 @@ test("links sharing a port still connect when belts run along both sides of it",
 });
 
 test("buildings added to a restored layout never sit in front of a connected port", () => {
-  for (const [itemId, small, big] of [["iron_enr_bottle", 10, 20], ["glass_enr_bottle", 10, 20], ["quartz_enr", 10, 20], ["proc_battery_4", 6, 12]]) {
+  for (const [itemId, small, big] of [["iron_enr_bottle", 10, 20], ["quartz_enr", 10, 20], ["bottled_food_4", 6, 12], ["bottled_food_2", 10, 20]]) {
     const saved = layout.serialize(planFor(itemId, small).plan);
     const plan = planFor(itemId, big).plan;
     const outcome = layout.applySaved(plan, saved);
