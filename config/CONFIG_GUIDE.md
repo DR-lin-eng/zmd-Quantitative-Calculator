@@ -118,3 +118,61 @@
 - `fuel_rate_per_sec`: 单台发电机的燃料消耗速率（单位：个/秒）。
 - `fuel_power`: 燃料单位能量映射（键为燃料 ID，值为每单位燃料的能量）。
 - `icon`: 图标 URL。
+
+## v2 新增字段（由 `scripts/update_config.py` 生成）
+
+旧字段全部保留，下列字段均为可选，缺省时按旧行为处理。
+
+### items.json
+
+顶层：
+
+- `game_version` / `data_version` / `sources`：配方对应的游戏版本与数据来源。
+- `logistics`：`belt_per_sec`（传送带每口每秒）与 `pipe_per_sec`（管道每口每秒）。
+- `environments`：气体环境。`gas` 为通入气体散布机的气体，`rate_per_sec` 为一台散布机的最低通气量，`machine` 为散布机 id。
+- `disposal`：只有输入、没有产出的处理配方（废水处理机、净水节点）。字段同配方，无 `output_qty`。
+
+物品：
+
+- `phase`：`solid` / `liquid` / `gas`，决定走传送带还是管道。
+- `group`：供给列表的分组，`inn` 为 1.6 农场 / 牧场原料，界面默认折叠。
+
+配方：
+
+- `id`：配方唯一 id；同一配方可由多种机器生产时为 `配方@机器`。
+- `byproducts`：副产物列表 `[{ "item": "...", "qty": 1 }]`，与主产物同一周期产出。
+- `alt`：替代路线（扩容机器、固气 / 液气转化、循环配方）。经典算法忽略，全局最优会自动选用。
+- `env`：需要的气体环境 id（对应 `environments[].id`）。
+- `locations`：可建造的地区（`tundra` 四号谷地 / `jinlong` 武陵）。
+
+```json
+{
+  "id": "copper_nugget",
+  "machine": "furnance_1",
+  "time_sec": 2,
+  "output_qty": 1,
+  "inputs": [
+    { "item": "copper_ore", "qty": 1 },
+    { "item": "liquid_water", "qty": 1 }
+  ],
+  "byproducts": [{ "item": "liquid_sewage", "qty": 1 }],
+  "locations": ["jinlong"]
+}
+```
+
+### machines.json
+
+- `input_ports` / `output_ports`：传送带口数量；`pipe_input_ports` / `pipe_output_ports`：管道口数量。
+- `size`：占地 `[宽, 深]`，`kit_size` 为两者乘积。
+- `virtual`：不占地的虚拟设施（据点供货、净水节点），不计入机器汇总。
+- `mining`：采集设施（矿机、水泵、气泵），原料由“地图原料供给”填写，不参与计算。
+- `environment`：气体散布机。
+- `locations`：可建造的地区。
+
+### 更新数据
+
+```bash
+python scripts/update_config.py            # 下载最新数据并重新生成 config/
+python scripts/update_config.py --offline  # 只使用 .cache/ 中已有的文件
+node --test tests/test_solver.cjs          # 校验生成的配置与求解器
+```

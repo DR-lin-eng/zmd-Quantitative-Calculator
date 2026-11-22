@@ -255,7 +255,10 @@ const app = createApp({
     const classicItemsById = computed(() => {
       const map = {};
       for (const item of state.items) {
-        map[item.id] = { ...item, recipes: item.recipes.filter((recipe) => !recipe.alt) };
+        const defaults = item.recipes.filter((recipe) => !recipe.alt);
+        // It does not model gas diffusers either, so environment recipes are a last resort.
+        const plain = defaults.filter((recipe) => !recipe.env);
+        map[item.id] = { ...item, recipes: plain.length ? plain : defaults };
       }
       return map;
     });

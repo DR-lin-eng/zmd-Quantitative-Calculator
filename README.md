@@ -127,10 +127,31 @@ For detailed configuration schema, see: **[config/CONFIG_GUIDE.md](config/CONFIG
 
 ### Calculation Rules
 
-- **Belt throughput**: `0.5 items/sec/port`, used to cap per-machine output
-- **Multi-output machines**: Split evenly across outputs
-- **Multi-input machines**: Assume one belt per input item
-- **Kit grouping**: Machines are grouped by `kit_size`
+Two solvers are available under "Solver" / “计算方式”:
+
+- **Global optimum (default)** – `web/solver.js`, a dependency-free linear program. Every recipe is a
+  variable, so it mixes alternative recipes, reuses byproducts (sewage, acid), adds waste treatment
+  and shares raw materials across targets. Targets are optimised in priority order, then the plan
+  with the fewest machines / lowest power / least raw material is picked. Machine limits are kept as
+  whole machines per recipe; machine counts are rounded up, so the last machine of a recipe may idle.
+  Gas-environment recipes are charged one gas diffuser's minimum feed each.
+- **Classic** – the original greedy tree. It only follows each item's default recipe and ignores
+  byproducts, pipes and gas environments, so newer Wuling chains may not resolve.
+
+Logistics limits: belts `0.5 items/sec/port`, pipes `2 units/sec/port` (`logistics` in `items.json`).
+
+### Updating recipes | 更新配方
+
+```bash
+python scripts/update_config.py     # downloads game data to .cache/ and rewrites config/*.json
+node --test tests/test_solver.cjs   # solver tests against the generated config
+```
+
+Data comes from [endfield-calc/factoriolab](https://github.com/endfield-calc/factoriolab) (curated
+recipes) plus [AKEData](https://data.akedata.wiki) table dumps (newer recipes, ports, power, sizes,
+gas environments). The data version is recorded in `config/items.json` and shown in the page header.
+
+游戏更新后运行上面的脚本即可重新生成 `config/`，页面标题下会显示当前配方版本。
 
 ## Config schema (examples)
 
