@@ -221,3 +221,36 @@ test("re-solving for one machine limit does not break another", () => {
     close(result.outputs[0].rate, 1, `best whole-machine plan (${objective})`);
   }
 });
+
+test("whole-machine limits keep an earlier target ahead of a later one", () => {
+  // 33/min of Ferrium needs a second, partly idle refinery; the other five go to Origocrust.
+  const limits = { furnance_1: 7 };
+  const result = solve(
+    [
+      { itemId: "iron_nugget", rate: 33 / 60 },
+      { itemId: "crystal_shell", maximize: true }
+    ],
+    {},
+    limits
+  );
+  close(result.outputs[0].rate * 60, 33, "first target met in full");
+  close(result.outputs[1].rate * 60, 150, "second target uses the remaining refineries");
+  assert.ok(wholeMachines(result, "furnance_1") <= 7);
+  assert.ok(!result.warnings.some((warning) => warning.code === "limit_rounded"));
+});
+
+test("two machine limits are split jointly", () => {
+  const limits = { furnance_1: 2, grinder_1: 3 };
+  const result = solve(
+    [
+      { itemId: "glass_cmpt", rate: 8 / 60 },
+      { itemId: "carbon_powder", maximize: true }
+    ],
+    {},
+    limits
+  );
+  close(result.outputs[0].rate * 60, 8, "first target");
+  close(result.outputs[1].rate * 60, 120, "second target");
+  assert.ok(wholeMachines(result, "furnance_1") <= 2);
+  assert.ok(wholeMachines(result, "grinder_1") <= 3);
+});
