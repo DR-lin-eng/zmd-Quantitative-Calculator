@@ -267,6 +267,7 @@
       watch(
         () => props.runs,
         () => {
+          message.value = "";
           if (open.value) build(true);
         }
       );
@@ -496,9 +497,9 @@
           });
       }
 
-      const shorten = (text, width) => {
+      const shorten = (text, width, size) => {
         const wide = /[^\x00-\xff]/.test(text);
-        const max = Math.max(2, Math.floor(width / (wide ? 8.5 : 4.6)));
+        const max = Math.max(2, Math.floor(width / (size * (wide ? 1 : 0.6))));
         return text.length > max ? text.slice(0, max - 1) + "…" : text;
       };
       const perMinute = (rate) => `${Math.round(rate * 6000) / 100}${s.value.perMin}`;
@@ -539,8 +540,8 @@
             }
             const machine = props.machineName(b.machineId);
             const item = props.itemName(b.itemId);
-            entry.name = shorten(machine, entry.pw - 4);
-            entry.item = shorten(item, entry.pw - 4);
+            entry.name = shorten(machine, entry.pw - 4, 9);
+            entry.item = shorten(item, entry.pw - 4, 7.5);
             entry.title = `${machine} #${b.index}/${b.total} - ${item}`;
             entry.ports = Layout.worldPorts(b).map((port) => {
               const [dx, dy] = Layout.DIRS[port.d];
