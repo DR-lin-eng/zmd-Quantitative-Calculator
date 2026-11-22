@@ -162,6 +162,7 @@ function toyModel(recipes, machines) {
       .map((recipe) => ({
         id: recipe.id,
         machine: recipe.machine,
+        env: recipe.env,
         time_sec: 1,
         output_qty: recipe.qty || 1,
         inputs: Object.entries(recipe.in).map(([item, qty]) => ({ item, qty }))
@@ -294,4 +295,28 @@ test("the whole-machine search stays within its solve budget", () => {
   assert.ok(result.outputs[1].rate < 1e-7, "no trace originium powder");
   assert.ok(wholeMachines(result, "furnance_1") <= 25);
   assert.ok(wholeMachines(result, "grinder_1") <= 25);
+});
+
+test("a cut-off search is reported even when another gas-environment plan wins", () => {
+  // Without the environment, t needs recipes a and b on the single m machine, and the search
+  // runs out of budget. With it, recipe e covers the target outright.
+  const model = toyModel(
+    [
+      { id: "a", out: "t", machine: "m", in: { r1: 1 } },
+      { id: "b", out: "t", machine: "m", in: { r2: 1 } },
+      { id: "e", out: "t", machine: "n", qty: 3, env: "E", in: { r3: 1 } }
+    ],
+    ["m", "n"]
+  );
+  const result = solver.solve({
+    ...model,
+    environments: [{ id: "E", gas: "gas", rate_per_sec: 0.1 }],
+    supplies: { r1: 0.5, r2: 0.5, r3: 1, gas: 1 },
+    machineLimits: { m: 1 },
+    targets: [{ itemId: "t", rate: 0.9 }],
+    maxLimitSolves: 2
+  });
+  close(result.outputs[0].rate, 0.9, "the environment plan wins");
+  assert.deepStrictEqual(result.environments.map((env) => env.id), ["E"]);
+  assert.ok(result.warnings.some((warning) => warning.code === "limit_rounded"));
 });

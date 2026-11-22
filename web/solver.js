@@ -468,7 +468,7 @@
 
     const limited = enforceIntegerLimits(model, caps, result);
     result = limited.result;
-    if (!limited.exact) warnings.push({ code: "limit_rounded" });
+    if (!limited.exact) budget.incomplete = true;
 
     for (let k = 0; k < hidden.length; k++) {
       if (result.stageValues[k] < hidden[k].rate * (1 - 1e-6)) return null;
@@ -517,7 +517,8 @@
 
     let best = null;
     const scenarios = 1 << candidates.length;
-    const budget = { left: MAX_LIMIT_SOLVES, share: 0, used: 0 };
+    const solves = Number.isFinite(config.maxLimitSolves) ? config.maxLimitSolves : MAX_LIMIT_SOLVES;
+    const budget = { left: solves, share: 0, used: 0, incomplete: false };
     for (let mask = 0; mask < scenarios; mask++) {
       const active = candidates.filter((_, index) => mask & (1 << index));
       budget.share = Math.max(0, Math.ceil(budget.left / (scenarios - mask)));
@@ -532,6 +533,8 @@
       return { outputs: [], runs: [], rawUsage: {}, surplus: [], environments: [], warnings, machineMap };
     }
     warnings.push(...best.warnings);
+    // A cut-off search in any scenario, even a losing one, may have missed a better plan.
+    if (budget.incomplete) warnings.push({ code: "limit_rounded" });
 
     const x = best.x;
     const model = best.model;
