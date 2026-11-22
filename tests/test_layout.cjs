@@ -171,6 +171,28 @@ test("a saved layout is restored by building key", () => {
   assert.strictEqual(layout.route(fresh).stats.unrouted, 0);
 });
 
+test("markers missing from a saved layout are placed next to their restored machine", () => {
+  const { plan } = planFor("proc_battery_4", 6);
+  const owner = machinesOf(plan).find((b) => plan.buildings.some((m) => m.kind !== "machine" && m.owner === b.id));
+  assert.ok(layout.move(plan, owner, -150, 0));
+  assert.ok(layout.rotate(plan, owner, 1));
+  const saved = layout.serialize(plan);
+  saved.buildings = saved.buildings.filter((entry) => !/^(source|sink):/.test(entry.key));
+
+  const fresh = planFor("proc_battery_4", 6).plan;
+  const outcome = layout.applySaved(fresh, saved);
+  assert.strictEqual(outcome.matched, machinesOf(fresh).length);
+  const restored = fresh.buildings.find((b) => b.key === owner.key);
+  assert.deepStrictEqual([restored.x, restored.y, restored.rot], [owner.x, owner.y, owner.rot]);
+  const rect = layout.rectOf(restored);
+  for (const marker of fresh.buildings.filter((b) => b.kind !== "machine" && b.owner === restored.id)) {
+    const gap = Math.max(rect.x - marker.x, marker.x - (rect.x + rect.w - 1), rect.y - marker.y, marker.y - (rect.y + rect.h - 1));
+    assert.ok(gap >= 1 && gap <= 4, `marker ${marker.key} sits ${gap} cells from its machine`);
+  }
+  assert.strictEqual(layout.overlapping(fresh).size, 0);
+  assert.strictEqual(layout.route(fresh).stats.unrouted, 0);
+});
+
 test("a layout saved for another plan keeps what matches and never overlaps the rest", () => {
   const saved = layout.serialize(planFor("proc_battery_4", 6).plan);
   const bigger = planFor("proc_battery_4", 12).plan;

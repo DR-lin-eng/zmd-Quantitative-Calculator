@@ -433,9 +433,10 @@
 
   // ---- automatic arrangement ----------------------------------------------
 
-  function placeMarkers(plan, ownerId) {
+  function placeMarkers(plan, ownerId, only) {
     const byId = indexBuildings(plan);
-    const mine = (building) => building.kind !== "machine" && (!ownerId || building.owner === ownerId);
+    const mine = (building) =>
+      building.kind !== "machine" && (!ownerId || building.owner === ownerId) && (!only || only.has(building.id));
     for (const building of plan.buildings) if (mine(building)) building.x = building.y = null;
     assignPorts(plan);
     for (const link of plan.links) {
@@ -966,10 +967,13 @@
       building.rot = building.kind === "machine" ? ((Math.round(entry.rot || 0) % 4) + 4) % 4 : 0;
       matched += 1;
     }
+    // Machines the file does not know keep their spot; markers it does not know go next to their machine.
+    const markers = new Set();
     for (const building of loose) {
-      if (building.x === null) continue;
-      [building.x, building.y] = nearestFree(plan, building, building.x, building.y);
+      if (building.kind !== "machine") markers.add(building.id);
+      else if (building.x !== null) [building.x, building.y] = nearestFree(plan, building, building.x, building.y);
     }
+    if (markers.size) placeMarkers(plan, null, markers);
     return { matched, total: plan.buildings.length, unknown: stored.size - matched };
   }
 

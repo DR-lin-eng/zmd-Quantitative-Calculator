@@ -233,8 +233,11 @@
         revision.value += 1;
       }
 
+      const machineKeys = (target) => target.buildings.filter((b) => b.kind === "machine").map((b) => b.key);
+
       function build(keep) {
         const previous = keep && plan.value ? Layout.serialize(plan.value) : null;
+        const previousKeys = previous ? new Set(machineKeys(plan.value)) : null;
         const next = Layout.buildPlan({
           runs: props.runs,
           itemMap: props.itemMap,
@@ -243,9 +246,9 @@
         });
         Layout.autoArrange(next);
         if (previous) {
-          const known = new Set(previous.buildings.map((entry) => entry.key));
-          const same = next.buildings.length === known.size && next.buildings.every((b) => known.has(b.key));
-          if (same) Layout.applySaved(next, previous);
+          // Same machines as before (depot markers may differ): keep the user's positions and rotations.
+          const keys = machineKeys(next);
+          if (keys.length === previousKeys.size && keys.every((key) => previousKeys.has(key))) Layout.applySaved(next, previous);
         }
         plan.value = next;
         selectedId.value = "";
@@ -256,12 +259,9 @@
       function toggle() {
         open.value = !open.value;
         message.value = "";
-        if (open.value) build(false);
-        else {
-          plan.value = null;
-          routed.value = null;
-          fullscreen.value = false;
-        }
+        // The plan is kept while hidden, so reopening restores manual edits when the machines are unchanged.
+        if (open.value) build(true);
+        else fullscreen.value = false;
       }
 
       watch(
