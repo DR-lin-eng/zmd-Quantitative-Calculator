@@ -148,3 +148,76 @@ test("a fixed rate of zero makes nothing and leaves the raw for later targets", 
   close(result.outputs[1].rate * 60, 60, "later target gets all the ore");
   assert.ok(!result.warnings.some((warning) => warning.itemId === "iron_cmpt"));
 });
+
+function toyModel(recipes, machines) {
+  const ids = new Set();
+  for (const recipe of recipes) {
+    ids.add(recipe.out);
+    Object.keys(recipe.in).forEach((id) => ids.add(id));
+  }
+  const items = Array.from(ids, (id) => ({
+    id,
+    recipes: recipes
+      .filter((recipe) => recipe.out === id)
+      .map((recipe) => ({
+        id: recipe.id,
+        machine: recipe.machine,
+        time_sec: 1,
+        output_qty: recipe.qty || 1,
+        inputs: Object.entries(recipe.in).map(([item, qty]) => ({ item, qty }))
+      }))
+  }));
+  const ports = { input_ports: 9, output_ports: 9 };
+  return { items, machines: machines.map((id) => ({ id, ...ports })), logistics: { belt_per_sec: 100 } };
+}
+
+function wholeMachines(result, machineId) {
+  return result.runs.filter((run) => run.machineId === machineId).reduce((sum, run) => sum + run.machineCount, 0);
+}
+
+test("a recipe idle in the relaxed plan is still tried when a machine limit forces rounding", () => {
+  // Relaxed: half a machine each of a and b (1.0/s). With one whole machine, c alone gives 0.9/s.
+  const model = toyModel(
+    [
+      { id: "a", out: "t", machine: "m", in: { r1: 1 } },
+      { id: "b", out: "t", machine: "m", in: { r2: 1 } },
+      { id: "c", out: "t", machine: "m", qty: 0.9, in: { r3: 0.9 } }
+    ],
+    ["m"]
+  );
+  const result = solver.solve({
+    ...model,
+    supplies: { r1: 0.5, r2: 0.5, r3: Infinity },
+    machineLimits: { m: 1 },
+    targets: [{ itemId: "t", maximize: true }]
+  });
+  close(result.outputs[0].rate, 0.9, "uses recipe c");
+  assert.ok(wholeMachines(result, "m") <= 1);
+});
+
+test("re-solving for one machine limit does not break another", () => {
+  // t needs x and y. Splitting m as 1 + 1 looks best (1.5/s) but leaves n running two recipes at
+  // half load, which is two machines against a limit of one.
+  const model = toyModel(
+    [
+      { id: "t", out: "t", machine: "free", in: { x: 1, y: 1 } },
+      { id: "x-m", out: "x", machine: "m", in: { r: 1 } },
+      { id: "y-m", out: "y", machine: "m", in: { r: 1 } },
+      { id: "x-n", out: "x", machine: "n", in: { r: 1 } },
+      { id: "y-n", out: "y", machine: "n", in: { r: 1 } }
+    ],
+    ["free", "m", "n"]
+  );
+  for (const objective of ["machines", "power", "raw"]) {
+    const result = solver.solve({
+      ...model,
+      supplies: { r: Infinity },
+      machineLimits: { free: 50, m: 2, n: 1 },
+      targets: [{ itemId: "t", maximize: true }],
+      objective
+    });
+    assert.ok(wholeMachines(result, "m") <= 2, `m within limit (${objective})`);
+    assert.ok(wholeMachines(result, "n") <= 1, `n within limit (${objective})`);
+    close(result.outputs[0].rate, 1, `best whole-machine plan (${objective})`);
+  }
+});

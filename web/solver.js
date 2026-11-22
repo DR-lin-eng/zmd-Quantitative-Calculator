@@ -21,6 +21,7 @@
   const BIG = 1e6;
   const STAGE_SLACK = 1e-7;
   const MAX_ALLOCATIONS = 32;
+  const MAX_LIMIT_ROUNDS = 6;
 
   /** Primal simplex on a dense tableau. All rows are "<=" and must hold at the current point. */
   class Tableau {
@@ -211,7 +212,7 @@
     return 1 + 1e-4 * power + 1e-6 * area;
   }
 
-  /** One lexicographic solve. `caps[k]` bounds target k; `allocation` pins machine-limited recipes. */
+  /** One lexicographic solve. `caps[k]` bounds target k; `allocation` is extra `[coefs, cap]` rows that pin machine counts. */
   function solveOnce(model, caps, allocation) {
     const { recipes, itemMap, supplies, machineLimits, targets, objective } = model;
     const itemIds = model.itemIds;
@@ -223,7 +224,7 @@
     const colSupply = (i) => nR + i;
     const colTarget = (k) => nR + nS + k;
     const limited = Object.keys(machineLimits);
-    const maxRows = itemIds.length + nS + nT * 2 + limited.length + nR + 4;
+    const maxRows = itemIds.length + nS + nT * 2 + limited.length * 2 + nR + 4;
     const lp = new Tableau(numVars, maxRows);
 
     const balance = {};
@@ -249,7 +250,7 @@
       if (coefs.length) lp.addRow(coefs, machineLimits[machineId]);
     }
     if (allocation) {
-      for (const [r, count] of allocation) lp.addRow([[r, 1]], count);
+      for (const [coefs, cap] of allocation) lp.addRow(coefs, cap);
     }
 
     const stageValues = [];
@@ -294,68 +295,130 @@
     return out;
   }
 
-  /** Machine limits are integers per recipe: split each limited machine's count among recipes. */
+  /** Limited machine types whose per-recipe whole-machine counts add up past the limit. */
+  function overusedMachines(model, byMachine, x) {
+    return Object.keys(byMachine).filter((id) => {
+      let needed = 0;
+      for (const r of byMachine[id]) {
+        if (x[r] > 1e-5) needed += Math.ceil(x[r] - 1e-6);
+      }
+      return needed > model.machineLimits[id];
+    });
+  }
+
+  /**
+   * Whole-machine splits of one machine type. Each recipe in `own` gets its own count; the `rest`
+   * share the spare machines through one joint cap, or get none when `strict`.
+   * `single` skips the enumeration and rounds the current solution `x` instead.
+   */
+  function allocationOptions(limit, own, rest, x, strict, single) {
+    const spareSlot = rest.length > 0 && !strict ? 1 : 0;
+    const slots = own.length + spareSlot;
+    let splits = null;
+    if (slots === 0) {
+      splits = [[]];
+    } else if (!single && slots <= 7 && limit <= 12) {
+      const all = compositions(limit, slots);
+      if (all.length <= MAX_ALLOCATIONS) splits = all;
+    }
+    const exact = splits !== null;
+    if (!splits) {
+      // largest-remainder rounding of the current solution
+      const counts = own.map((r) => Math.floor(x[r] + 1e-6));
+      let left = limit - counts.reduce((a, b) => a + b, 0);
+      const order = own.map((r, i) => [x[r] - counts[i], i]).sort((a, b) => b[0] - a[0]);
+      for (const [remainder, i] of order) {
+        if (left <= 0 || (spareSlot && remainder <= 1e-6)) break;
+        counts[i] += 1;
+        left -= 1;
+      }
+      splits = [spareSlot ? counts.concat([Math.max(0, left)]) : counts];
+    }
+    const rows = splits.map((split) => {
+      const pins = own.map((r, i) => [[[r, 1]], split[i]]);
+      if (rest.length) pins.push([rest.map((r) => [r, 1]), spareSlot ? split[own.length] : 0]);
+      return pins;
+    });
+    return { exact, rows };
+  }
+
+  /**
+   * Machine limits count whole machines per recipe, which the relaxed solve ignores. Split each
+   * overused machine type among its recipes and re-solve, repeating while the new plan pushes
+   * another type (or recipes that were idle before) past a limit.
+   */
   function enforceIntegerLimits(model, caps, relaxed) {
     const { recipes, machineLimits } = model;
-    const groups = [];
-    for (const machineId of Object.keys(machineLimits)) {
-      const limit = machineLimits[machineId];
-      const all = [];
-      recipes.forEach((recipe, r) => {
-        if (recipe.machine === machineId) all.push(r);
-      });
-      const active = all.filter((r) => relaxed.x[r] > 1e-5);
-      const needed = active.reduce((sum, r) => sum + Math.ceil(relaxed.x[r] - 1e-6), 0);
-      if (needed <= limit) continue;
-      let options;
-      const combos = active.length <= 6 && limit <= 12 ? compositions(limit, active.length) : null;
-      if (combos && combos.length <= MAX_ALLOCATIONS) {
-        options = combos;
-      } else {
-        // largest-remainder rounding of the relaxed solution
-        const counts = active.map((r) => Math.floor(relaxed.x[r] + 1e-6));
-        let left = limit - counts.reduce((a, b) => a + b, 0);
-        const order = active
-          .map((r, i) => [relaxed.x[r] - counts[i], i])
-          .sort((a, b) => b[0] - a[0]);
-        for (const [, i] of order) {
-          if (left <= 0) break;
-          counts[i] += 1;
-          left -= 1;
-        }
-        options = [counts];
-      }
-      groups.push({ all, active, options });
-    }
-    if (!groups.length) return { result: relaxed, exact: true };
+    const byMachine = {};
+    recipes.forEach((recipe, r) => {
+      if (machineLimits[recipe.machine] === undefined) return;
+      (byMachine[recipe.machine] = byMachine[recipe.machine] || []).push(r);
+    });
+    if (!overusedMachines(model, byMachine, relaxed.x).length) return { result: relaxed, exact: true };
 
-    let plans = [[]];
+    const own = {}; // machine id -> recipes holding their own whole-machine count
+    const pinned = {}; // machine id -> rows kept from an earlier round
+    let current = relaxed;
+    let compliant = null;
     let exact = true;
-    for (const group of groups) {
-      const next = [];
-      for (const plan of plans) {
-        for (const option of group.options) {
-          if (next.length >= MAX_ALLOCATIONS) {
-            exact = false;
-            break;
+    for (let round = 0; round < MAX_LIMIT_ROUNDS; round++) {
+      const over = overusedMachines(model, byMachine, current.x);
+      if (!over.length) break;
+      if (round > 0) exact = false;
+      // The last round pins every limited type to rounded counts, which cannot exceed a limit.
+      const last = round === MAX_LIMIT_ROUNDS - 1;
+      let plans = [[]];
+      for (const id of last ? Object.keys(byMachine) : over) {
+        const set = own[id] || (own[id] = new Set());
+        const sizeBefore = set.size;
+        for (const r of byMachine[id]) {
+          if (current.x[r] > 1e-5) set.add(r);
+        }
+        const strict = last || (!!pinned[id] && set.size === sizeBefore);
+        const rest = byMachine[id].filter((r) => !set.has(r));
+        const options = allocationOptions(machineLimits[id], Array.from(set), rest, current.x, strict, last);
+        if (!options.exact) exact = false;
+        const next = [];
+        for (const plan of plans) {
+          for (const rows of options.rows) {
+            if (next.length >= MAX_ALLOCATIONS) {
+              exact = false;
+              break;
+            }
+            next.push(plan.concat([[id, rows]]));
           }
-          const pins = group.all.map((r) => {
-            const index = group.active.indexOf(r);
-            return [r, index >= 0 ? option[index] : 0];
-          });
-          next.push(plan.concat(pins));
+        }
+        plans = next;
+      }
+
+      let best = null;
+      let bestPlan = null;
+      for (const plan of plans) {
+        const replaced = new Set(plan.map(([id]) => id));
+        const rows = [];
+        for (const id of Object.keys(pinned)) {
+          if (!replaced.has(id)) rows.push(...pinned[id]);
+        }
+        for (const [, pins] of plan) rows.push(...pins);
+        const candidate = solveOnce(model, caps, rows);
+        if (candidate.unbounded !== undefined) continue;
+        const fits = !overusedMachines(model, byMachine, candidate.x).length;
+        if (fits && betterThan(candidate, compliant)) compliant = candidate;
+        if (betterThan(candidate, best)) {
+          best = candidate;
+          bestPlan = plan;
         }
       }
-      if (group.options.length === 1) exact = false;
-      plans = next;
+      if (!best) break;
+      for (const [id, rows] of bestPlan) pinned[id] = rows;
+      current = best;
     }
-    let best = null;
-    for (const plan of plans) {
-      const candidate = solveOnce(model, caps, plan);
-      if (candidate.unbounded !== undefined) continue;
-      if (betterThan(candidate, best)) best = candidate;
+
+    if (overusedMachines(model, byMachine, current.x).length) {
+      return { result: compliant || current, exact: false };
     }
-    return { result: best || relaxed, exact };
+    if (compliant && betterThan(compliant, current)) current = compliant;
+    return { result: current, exact };
   }
 
   /** Solve one fixed choice of gas environments. Returns null when a chosen environment cannot be fed. */
