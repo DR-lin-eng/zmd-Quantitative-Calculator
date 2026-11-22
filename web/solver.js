@@ -20,7 +20,9 @@
   const EPS = 1e-9;
   const BIG = 1e6;
   const STAGE_SLACK = 1e-7;
-  const MAX_LIMIT_SOLVES = 400;
+  const MAX_LIMIT_SOLVES = 200;
+  // Machines below this are solver noise; anything above needs a whole machine.
+  const TRACE = 1e-9;
 
   /** Primal simplex on a dense tableau. All rows are "<=" and must hold at the current point. */
   class Tableau {
@@ -285,8 +287,11 @@
 
   function betterThan(a, b) {
     if (!b) return true;
+    // Each stage may give up STAGE_SLACK of its value, which later stages can turn into trace
+    // output. Comparing against the size of the earlier stages keeps that from counting as a gain.
+    let scale = 1e-2;
     for (let k = 0; k < a.stageValues.length; k++) {
-      const scale = Math.max(1e-9, Math.abs(a.stageValues[k]), Math.abs(b.stageValues[k]));
+      scale = Math.max(scale, Math.abs(a.stageValues[k]), Math.abs(b.stageValues[k]));
       const diff = (a.stageValues[k] - b.stageValues[k]) / scale;
       if (diff > 1e-6) return true;
       if (diff < -1e-6) return false;
@@ -294,13 +299,16 @@
     return a.totalCost < b.totalCost - 1e-9;
   }
 
+  /** Whole machines a recipe needs to run `value` machines' worth of cycles. */
+  function wholeMachines(value) {
+    return value > TRACE ? Math.max(1, Math.ceil(value - 1e-6)) : 0;
+  }
+
   /** Limited machine types whose per-recipe whole-machine counts add up past the limit. */
   function overusedMachines(model, byMachine, x) {
     return Object.keys(byMachine).filter((id) => {
       let needed = 0;
-      for (const r of byMachine[id]) {
-        if (x[r] > 1e-5) needed += Math.ceil(x[r] - 1e-6);
-      }
+      for (const r of byMachine[id]) needed += wholeMachines(x[r]);
       return needed > model.machineLimits[id];
     });
   }
@@ -318,7 +326,8 @@
    * Machine limits count whole machines per recipe, which the relaxed solve ignores. Branch and
    * bound on the machine count of one partly loaded recipe at a time: either it gets fewer whole
    * machines (`hi`) or it reserves the next whole machine (`lo`). Exact unless the solve budget
-   * runs out, in which case the best whole-machine plan found so far is returned.
+   * runs out, in which case the best whole-machine plan found so far is returned. The first solve
+   * rounds the relaxed counts, so there is always a plan that fits.
    */
   function enforceIntegerLimits(model, caps, relaxed) {
     const { recipes, machineLimits } = model;
@@ -330,10 +339,14 @@
     const fits = (result) => !overusedMachines(model, byMachine, result.x).length;
     if (fits(relaxed)) return { result: relaxed, exact: true };
 
-    let solves = 0;
+    // The solve budget is shared by every gas-environment scenario of one calculation.
+    const budget = model.budget;
+    let allowance = budget.share;
     const solveNode = (lo, hi) => {
       if (!reservationsFit(model, byMachine, lo)) return null;
-      solves += 1;
+      allowance -= 1;
+      budget.left -= 1;
+      budget.used += 1;
       const result = solveOnce(model, caps, { lo, hi });
       return result.unbounded === undefined ? { lo, hi, result } : null;
     };
@@ -367,7 +380,7 @@
         best = node.result;
         continue;
       }
-      if (solves >= MAX_LIMIT_SOLVES) {
+      if (allowance < 2) {
         exact = false;
         break;
       }
@@ -378,8 +391,7 @@
       for (const id of over) {
         for (const r of byMachine[id]) {
           const value = node.result.x[r];
-          if (value <= 1e-5) continue;
-          const count = Math.ceil(value - 1e-6);
+          const count = wholeMachines(value);
           const gap = count - value;
           if (gap <= 1e-6 || count <= (node.lo.get(r) || 0)) continue;
           if (gap < pickGap) {
@@ -404,7 +416,7 @@
   }
 
   /** Solve one fixed choice of gas environments. Returns null when a chosen environment cannot be fed. */
-  function solveScenario(config, allRecipes, itemMap, userTargets, activeEnvs) {
+  function solveScenario(config, allRecipes, itemMap, userTargets, activeEnvs, budget) {
     const warnings = [];
     const envIds = new Set(activeEnvs.map((env) => env.id));
     const recipes = allRecipes.filter((recipe) => !recipe.envCharged || envIds.has(recipe.env));
@@ -436,7 +448,8 @@
       supplyIds: Object.keys(supplies),
       machineLimits,
       targets,
-      objective: config.objective || "machines"
+      objective: config.objective || "machines",
+      budget
     };
 
     const caps = targets.map((target) => (target.maximize ? BIG : target.rate));
@@ -503,9 +516,12 @@
       .slice(0, 4);
 
     let best = null;
-    for (let mask = 0; mask < 1 << candidates.length; mask++) {
+    const scenarios = 1 << candidates.length;
+    const budget = { left: MAX_LIMIT_SOLVES, share: 0, used: 0 };
+    for (let mask = 0; mask < scenarios; mask++) {
       const active = candidates.filter((_, index) => mask & (1 << index));
-      const scenario = solveScenario(config, recipes, itemMap, targets, active);
+      budget.share = Math.max(0, Math.ceil(budget.left / (scenarios - mask)));
+      const scenario = solveScenario(config, recipes, itemMap, targets, active, budget);
       if (!scenario) continue;
       // An environment that ends up unused only wastes gas; the subset without it covers that case.
       const idle = active.some((env) => !scenario.model.recipes.some((r, i) => r.env === env.id && scenario.x[i] > 1e-5));
@@ -587,7 +603,7 @@
       if (fluid) warnings.push({ code: "fluid_surplus", itemId: id, rate });
     }
 
-    return { outputs, runs, rawUsage, surplus, environments, warnings, machineMap };
+    return { outputs, runs, rawUsage, surplus, environments, warnings, machineMap, limitSolves: budget.used };
   }
 
   return { solve, cycleRate, collectRecipes, Tableau };

@@ -254,3 +254,44 @@ test("two machine limits are split jointly", () => {
   assert.ok(wholeMachines(result, "furnance_1") <= 2);
   assert.ok(wholeMachines(result, "grinder_1") <= 3);
 });
+
+test("a trace of an earlier target does not take a machine from a later one", () => {
+  // t0 fills the only g machine, so p (and with it t1) cannot run. A sliver of p would still
+  // tie up one f machine and halve t2.
+  const model = toyModel(
+    [
+      { id: "t0", out: "t0", machine: "g", in: { r: 1 } },
+      { id: "p", out: "p", machine: "g", qty: 500, in: { r: 1 } },
+      { id: "t1", out: "t1", machine: "f", in: { p: 1 } },
+      { id: "t2", out: "t2", machine: "f", in: { r: 1 } }
+    ],
+    ["g", "f"]
+  );
+  const result = solver.solve({
+    ...model,
+    supplies: { r: Infinity },
+    machineLimits: { g: 1, f: 2 },
+    targets: ["t0", "t1", "t2"].map((itemId) => ({ itemId, maximize: true }))
+  });
+  close(result.outputs[0].rate, 1, "t0");
+  assert.ok(result.outputs[1].rate < 1e-7, `t1 is not produced: ${result.outputs[1].rate}`);
+  close(result.outputs[2].rate, 2, "t2 keeps both machines");
+});
+
+test("the whole-machine search stays within its solve budget", () => {
+  // Many interchangeable Carbon Powder routes: the optimum cannot be proven quickly.
+  const limits = { furnance_1: 25, grinder_1: 25 };
+  const result = solve(
+    [
+      { itemId: "carbon_powder", maximize: true },
+      { itemId: "originium_powder", rate: 45 / 60 }
+    ],
+    {},
+    limits
+  );
+  assert.ok(result.limitSolves <= 210, `solves: ${result.limitSolves}`);
+  close(result.outputs[0].rate * 60, 1980, "carbon powder");
+  assert.ok(result.outputs[1].rate < 1e-7, "no trace originium powder");
+  assert.ok(wholeMachines(result, "furnance_1") <= 25);
+  assert.ok(wholeMachines(result, "grinder_1") <= 25);
+});
