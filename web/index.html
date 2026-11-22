@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600&family=Space+Grotesk:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260131" />
+    <link rel="stylesheet" href="styles.css?v=20261122" />
   </head>
   <body>
     <div id="app" class="app" v-cloak>
@@ -18,6 +18,7 @@
         <div class="title-block">
           <div class="eyebrow">{{ t('tagline') }}</div>
           <h1>{{ t('title') }}</h1>
+          <span class="version-badge" v-if="gameVersion">{{ t('gameVersion') }} v{{ gameVersion }}</span>
           <p class="subtitle">{{ t('subtitle') }}</p>
         </div>
         <div class="header-actions">
@@ -58,14 +59,26 @@
               <span class="hint">{{ t('perSecond') }}</span>
             </div>
             <div class="list">
-              <div class="row" v-for="supply in supplies" :key="supply.itemId">
+              <div class="row" v-for="supply in mainSupplies" :key="supply.itemId">
                 <div class="row-left">
                   <img v-if="showIcons && supply.icon" :src="supply.icon" alt="" />
                   <div class="row-label">{{ displayItemName(supply.itemId) }}</div>
                 </div>
-                <input type="number" step="0.1" v-model="supply.rate" />
+                <input type="number" step="0.1" min="0" v-model="supply.rate" />
               </div>
             </div>
+            <details class="collapse" v-if="extraSupplies.length">
+              <summary>{{ t('otherSupplies') }}</summary>
+              <div class="list">
+                <div class="row" v-for="supply in extraSupplies" :key="supply.itemId">
+                  <div class="row-left">
+                    <img v-if="showIcons && supply.icon" :src="supply.icon" alt="" />
+                    <div class="row-label">{{ displayItemName(supply.itemId) }}</div>
+                  </div>
+                  <input type="number" step="0.1" min="0" v-model="supply.rate" />
+                </div>
+              </div>
+            </details>
           </div>
 
           <div class="section">
@@ -123,6 +136,16 @@
                   <input type="checkbox" v-model="target.maximize" />
                   <span>{{ t('maximize') }}</span>
                 </label>
+                <input
+                  v-if="!target.maximize"
+                  class="target-rate"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  v-model="target.rate"
+                  :placeholder="t('targetRate')"
+                  :aria-label="t('targetRate')"
+                />
                 <div class="target-actions">
                   <button class="icon-btn" @click="moveTarget(index, -1)" :disabled="index === 0">↑</button>
                   <button class="icon-btn" @click="moveTarget(index, 1)" :disabled="index === targets.length - 1">↓</button>
@@ -131,6 +154,29 @@
               </div>
             </div>
             <button class="btn" @click="addTarget">{{ t('addTarget') }}</button>
+          </div>
+
+          <div class="section">
+            <div class="field">
+              <label>{{ t('calcMode') }}</label>
+              <select v-model="calcMode" @change="recalculate">
+                <option value="lp">{{ t('calcModeLp') }}</option>
+                <option value="classic">{{ t('calcModeClassic') }}</option>
+              </select>
+            </div>
+            <div class="field" v-if="calcMode === 'lp'">
+              <label>{{ t('objective') }}</label>
+              <select v-model="objective" @change="recalculate">
+                <option value="machines">{{ t('objectiveMachines') }}</option>
+                <option value="power">{{ t('objectivePower') }}</option>
+                <option value="raw">{{ t('objectiveRaw') }}</option>
+              </select>
+            </div>
+            <label class="checkbox" v-if="calcMode === 'lp' && environments.length">
+              <input type="checkbox" v-model="useEnvironments" @change="recalculate" />
+              <span>{{ t('useEnvironments') }}</span>
+            </label>
+            <div class="hint">{{ t('calcModeHint') }}</div>
           </div>
 
           <div class="section actions">
@@ -179,10 +225,10 @@
               <table>
                 <thead>
                   <tr>
-                    <th>Item</th>
-                    <th>Used</th>
-                    <th>Available</th>
-                    <th>Util</th>
+                    <th>{{ t('colItem') }}</th>
+                    <th>{{ t('colUsed') }}</th>
+                    <th>{{ t('colAvailable') }}</th>
+                    <th>{{ t('colUtil') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -196,12 +242,25 @@
               </table>
             </div>
 
+            <div class="section" v-if="results.byproducts && results.byproducts.length">
+              <div class="section-header">
+                <h2>{{ t('byproducts') }}</h2>
+                <span class="hint">{{ t('byproductsHint') }}</span>
+              </div>
+              <div class="chip-list">
+                <div class="chip" :class="{ warn: entry.fluid }" v-for="entry in results.byproducts" :key="entry.itemId">
+                  <span>{{ displayItemName(entry.itemId) }}</span>
+                  <strong>{{ formatRatePerMinute(entry.rate) }} /min</strong>
+                </div>
+              </div>
+            </div>
+
             <div class="section">
               <h2>{{ t('machines') }}</h2>
               <table>
                 <thead>
                   <tr>
-                    <th>Machine</th>
+                    <th>{{ t('colMachine') }}</th>
                     <th>{{ t('machineCount') }}</th>
                     <th>{{ t('kitSize') }}</th>
                     <th>{{ t('kitCount') }}</th>
@@ -225,8 +284,8 @@
               <table>
                 <thead>
                   <tr>
-                    <th>Item</th>
-                    <th>Machine</th>
+                    <th>{{ t('colItem') }}</th>
+                    <th>{{ t('colMachine') }}</th>
                     <th>{{ t('outputRate') }}</th>
                     <th>{{ t('machineCount') }}</th>
                     <th>{{ t('beltOutputUtil') }}</th>
@@ -234,13 +293,13 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="run in results.machineRuns" :key="run.itemId + '-' + run.machineId + '-' + run.rate">
-                    <td>{{ displayItemName(run.itemId) }}</td>
+                  <tr v-for="(run, index) in results.machineRuns" :key="(run.recipeId || run.itemId + '-' + run.machineId) + '-' + index">
+                    <td>{{ displayItemName(run.itemId) }}<span class="tag" v-if="run.disposal"> {{ t('disposalTag') }}</span><span class="tag" v-if="run.environment"> {{ displayEnvName(run.environment) }}</span><span class="tag" v-if="run.env"> {{ displayEnvName(run.env) }}</span></td>
                     <td>{{ displayMachineName(run.machineId) }}</td>
                     <td>{{ formatRatePerMinute(run.rate) }} /min</td>
-                    <td>{{ formatNumber(run.machineCount, 0) }}</td>
-                    <td :class="{ warn: run.outputUtil > 1 }">{{ formatNumber(run.outputUtil * 100) }}%</td>
-                    <td :class="{ warn: run.inputUtil > 1 }">{{ formatNumber(run.inputUtil * 100) }}%</td>
+                    <td>{{ run.virtual ? '-' : formatNumber(run.machineCount, 0) }}</td>
+                    <td :class="{ warn: run.outputUtil > 1.0001 }">{{ run.virtual ? '-' : formatNumber(run.outputUtil * 100) + '%' }}</td>
+                    <td :class="{ warn: run.inputUtil > 1.0001 }">{{ run.virtual ? '-' : formatNumber(run.inputUtil * 100) + '%' }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -249,7 +308,7 @@
             <div class="section" v-if="warnings.length">
               <h2>{{ t('warnings') }}</h2>
               <ul class="warnings">
-                <li v-for="(warning, index) in warnings" :key="index">{{ warning }}</li>
+                <li v-for="(warning, index) in warnings" :key="index">{{ warningText(warning) }}</li>
               </ul>
             </div>
 
@@ -310,6 +369,7 @@
                             class="node"
                             :class="{
                               raw: node.isRaw,
+                              disposal: node.isDisposal,
                               loop: node.isLoop,
                               overview: node.kind === 'overview',
                               area: node.kind === 'area',
@@ -363,7 +423,7 @@
                               :x="node.x - results.graph.nodeSize.width / 2 + (showIcons && node.icon ? 56 : 16)"
                               :y="node.y + 30"
                             >
-                              {{ displayMachineName(node.machineId) }}<tspan v-if="node.machineIndex"> #{{ node.machineIndex }}/{{ node.machineTotal }}</tspan>
+                              {{ displayMachineName(node.machineId) }}<tspan v-if="node.machineIndex"> #{{ node.machineIndex }}/{{ node.machineTotal }}</tspan><tspan v-if="node.machineCount"> ×{{ node.machineCount }}</tspan>
                             </text>
                           </template>
                         </g>
@@ -389,13 +449,16 @@
               <ol>
                 <li>在“地图原料供给”填写每分钟供给量；填 0 表示该原料不限制。</li>
                 <li>在“机器数量限制”设置上限；天有洪炉默认 1，留空表示不限。</li>
-                <li>在“目标产品”选择优先级与产出，勾选“最大化”会尽可能消耗原料。</li>
+                <li>在“目标产品”选择优先级与产出，勾选“最大化”会尽可能消耗原料；取消勾选可填写每分钟目标产量。</li>
+                <li>“计算方式”默认使用全局最优（线性规划），可切换回经典树形算法。</li>
                 <li>点击“计算”得到产出、机器统计、功耗与流程图。</li>
               </ol>
               <h3>特别说明</h3>
               <ul>
                 <li>当所有原料均不限制且目标未指定速率/最大化时，将按“最终产品 1 台机器”的产出计算。</li>
                 <li>原料填 0 会被视为无限，但会反算消耗量并在提示中显示。</li>
+                <li>全局最优模式会混合多条配方、回收副产物（如污水、沉积酸）并自动加入废水处理；机器数量按配方向上取整，最后一台可能不满载。</li>
+                <li>经典模式只使用每个物品的默认配方，不计算副产物与流体管道。</li>
               </ul>
             </template>
             <template v-else>
@@ -403,13 +466,16 @@
               <ol>
                 <li>Enter per-minute supply; use 0 to mark a raw material as unlimited.</li>
                 <li>Set machine limits; Xiranite Oven defaults to 1, blank means unlimited.</li>
-                <li>Pick targets and priority; “Maximize” consumes remaining supply.</li>
+                <li>Pick targets and priority; “Maximize” consumes remaining supply, or untick it to enter a per-minute rate.</li>
+                <li>“Solver” defaults to the global optimum (linear programming); the classic tree solver is still available.</li>
                 <li>Click “Calculate” to get outputs, totals, and diagrams.</li>
               </ol>
               <h3>Notes</h3>
               <ul>
                 <li>If all raws are unlimited and no target rate is set, we use 1 machine of the final product.</li>
                 <li>Raw set to 0 is treated as unlimited, but consumption is still estimated and shown.</li>
+                <li>Global optimum mixes recipes, reuses byproducts (sewage, acid) and adds waste treatment; machine counts are rounded up per recipe, so the last machine may idle part of the time.</li>
+                <li>Classic mode only uses each item's default recipe and ignores byproducts and pipes.</li>
               </ul>
             </template>
           </div>
@@ -433,6 +499,7 @@
         }
       });
     </script>
-    <script src="app.js?v=20260131"></script>
+    <script src="solver.js?v=20261122"></script>
+    <script src="app.js?v=20261122"></script>
   </body>
 </html>

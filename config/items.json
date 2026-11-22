@@ -10,6 +10,24 @@
     "belt_per_sec": 0.5,
     "pipe_per_sec": 2
   },
+  "environments": [
+    {
+      "id": "gas_acid",
+      "name": "Acidic Environment",
+      "name_zh": "酸性环境",
+      "gas": "gas_acid",
+      "rate_per_sec": 0.1,
+      "machine": "vaporizer_1"
+    },
+    {
+      "id": "gas_inert",
+      "name": "Stable Environment",
+      "name_zh": "稳定环境",
+      "gas": "gas_inert",
+      "rate_per_sec": 0.1,
+      "machine": "vaporizer_1"
+    }
+  ],
   "items": [
     {
       "id": "plant_moss_seed_1",
@@ -1994,7 +2012,8 @@
               "item": "gas_copper",
               "qty": 2
             }
-          ]
+          ],
+          "env": "gas_inert"
         },
         {
           "id": "gas_copper_enr",
@@ -2054,7 +2073,8 @@
               "item": "gas_xiranite",
               "qty": 1
             }
-          ]
+          ],
+          "env": "gas_acid"
         },
         {
           "id": "phase_trans_2-gas_copper_enr2",
@@ -2204,7 +2224,8 @@
               "item": "liquid_water",
               "qty": 1
             }
-          ]
+          ],
+          "env": "gas_inert"
         },
         {
           "id": "xiranite_powder-carbon_enr",
@@ -2647,7 +2668,8 @@
               "item": "gas_xiranite",
               "qty": 2
             }
-          ]
+          ],
+          "env": "gas_inert"
         },
         {
           "id": "phase_trans_1-gas_xiranite_enr",
@@ -3934,7 +3956,8 @@
               "item": "gas_xiranite",
               "qty": 1
             }
-          ]
+          ],
+          "env": "gas_inert"
         },
         {
           "id": "phase_trans_2-activity_copper_poly_gas",

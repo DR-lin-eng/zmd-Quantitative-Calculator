@@ -178,6 +178,7 @@
         push({
           id: r.id || `${item.id}#${index}`,
           itemId: item.id,
+          env: r.env || "",
           machine: r.machine,
           time_sec: r.time_sec || 1,
           inputs: r.inputs || [],
@@ -357,20 +358,14 @@
     return { result: best || relaxed, exact };
   }
 
-  function solve(config) {
+  /** Solve one fixed choice of gas environments. Returns null when a chosen environment cannot be fed. */
+  function solveScenario(config, allRecipes, itemMap, userTargets, activeEnvs) {
     const warnings = [];
-    const { recipes, itemMap, machineMap } = collectRecipes(config);
-
-    const targets = [];
-    for (const target of config.targets || []) {
-      if (!target.itemId) continue;
-      if (!itemMap[target.itemId]) {
-        warnings.push({ code: "unknown_item", itemId: target.itemId });
-        continue;
-      }
-      const rate = Number.isFinite(target.rate) && target.rate > 0 ? target.rate : null;
-      targets.push({ itemId: target.itemId, rate, maximize: !!target.maximize || rate === null });
-    }
+    const envIds = new Set(activeEnvs.map((env) => env.id));
+    const recipes = allRecipes.filter((recipe) => !recipe.envCharged || envIds.has(recipe.env));
+    // Each diffuser is a hidden top-priority target that drains its gas at the minimum feed rate.
+    const hidden = activeEnvs.map((env) => ({ itemId: env.gas, rate: env.rate_per_sec, maximize: false }));
+    const targets = hidden.concat(userTargets);
 
     const itemSet = new Set();
     for (const recipe of recipes) {
@@ -378,7 +373,6 @@
       for (const io of recipe.outputs) itemSet.add(io.item);
     }
     for (const target of targets) itemSet.add(target.itemId);
-    const itemIds = Array.from(itemSet);
 
     const supplies = {};
     for (const [id, value] of Object.entries(config.supplies || {})) {
@@ -392,7 +386,7 @@
     const model = {
       recipes,
       itemMap,
-      itemIds,
+      itemIds: Array.from(itemSet),
       supplies,
       supplyIds: Object.keys(supplies),
       machineLimits,
@@ -412,18 +406,76 @@
       caps[k] = fallback;
       warnings.push({ code: "unbounded", itemId: targets[k].itemId, rate: fallback });
     }
-    if (!result || result.unbounded !== undefined) {
-      return { outputs: [], runs: [], rawUsage: {}, surplus: [], warnings, recipes: [] };
-    }
+    if (!result || result.unbounded !== undefined) return null;
 
     const limited = enforceIntegerLimits(model, caps, result);
     result = limited.result;
     if (!limited.exact) warnings.push({ code: "limit_rounded" });
 
-    const x = result.x;
+    for (let k = 0; k < hidden.length; k++) {
+      if (result.stageValues[k] < hidden[k].rate * (1 - 1e-6)) return null;
+    }
+    return {
+      model,
+      warnings,
+      activeEnvs,
+      hiddenCount: hidden.length,
+      x: result.x,
+      colSupply: result.colSupply,
+      colTarget: result.colTarget,
+      surplusCol: result.surplusCol,
+      stageValues: result.stageValues.slice(hidden.length),
+      totalCost: result.totalCost
+    };
+  }
+
+  function solve(config) {
+    const warnings = [];
+    const { recipes, itemMap, machineMap } = collectRecipes(config);
+
+    const targets = [];
+    for (const target of config.targets || []) {
+      if (!target.itemId) continue;
+      if (!itemMap[target.itemId]) {
+        warnings.push({ code: "unknown_item", itemId: target.itemId });
+        continue;
+      }
+      const rate = Number.isFinite(target.rate) && target.rate > 0 ? target.rate : null;
+      targets.push({ itemId: target.itemId, rate, maximize: !!target.maximize || rate === null });
+    }
+
+    // Recipes tied to a gas environment need a diffuser, which burns gas at a fixed rate no matter
+    // how many machines it covers. That fixed charge is not linear, so every on/off combination of
+    // the environments is solved and the best one kept.
+    const disabled = new Set(config.disabledEnvs || []);
+    const envById = {};
+    for (const env of config.environments || []) envById[env.id] = env;
+    for (const recipe of recipes) recipe.envCharged = !!(recipe.env && envById[recipe.env]);
+    const usedEnvIds = new Set(recipes.filter((r) => r.envCharged).map((r) => r.env));
+    const candidates = Object.values(envById)
+      .filter((env) => usedEnvIds.has(env.id) && !disabled.has(env.id))
+      .slice(0, 4);
+
+    let best = null;
+    for (let mask = 0; mask < 1 << candidates.length; mask++) {
+      const active = candidates.filter((_, index) => mask & (1 << index));
+      const scenario = solveScenario(config, recipes, itemMap, targets, active);
+      if (!scenario) continue;
+      // An environment that ends up unused only wastes gas; the subset without it covers that case.
+      const idle = active.some((env) => !scenario.model.recipes.some((r, i) => r.env === env.id && scenario.x[i] > 1e-5));
+      if (idle) continue;
+      if (betterThan(scenario, best)) best = scenario;
+    }
+    if (!best) {
+      return { outputs: [], runs: [], rawUsage: {}, surplus: [], environments: [], warnings, machineMap };
+    }
+    warnings.push(...best.warnings);
+
+    const x = best.x;
+    const model = best.model;
     const clean = (value) => (Math.abs(value) < 1e-7 ? 0 : value);
     const outputs = targets.map((target, k) => {
-      const rate = clean(x[result.colTarget(k)]);
+      const rate = clean(x[best.colTarget(k + best.hiddenCount)]);
       if (!target.maximize && rate < target.rate * (1 - 1e-6)) {
         warnings.push({ code: "target_short", itemId: target.itemId, rate, wanted: target.rate });
       }
@@ -432,7 +484,7 @@
     });
 
     const runs = [];
-    recipes.forEach((recipe, r) => {
+    model.recipes.forEach((recipe, r) => {
       const machines = x[r];
       if (machines <= 1e-5) return;
       const cycles = machines * recipe.cycles;
@@ -447,27 +499,49 @@
         perMachineRate: (primary ? primary.qty : recipe.inputs[0].qty) * recipe.cycles,
         portLimited: recipe.cycles < 1 / recipe.time_sec - EPS,
         disposal: recipe.disposal,
+        env: recipe.envCharged ? recipe.env : "",
         inputs: recipe.inputs.map((io) => ({ item: io.item, rate: io.qty * cycles })),
         outputs: recipe.outputs.map((io) => ({ item: io.item, rate: io.qty * cycles }))
       });
     });
 
+    const environments = best.activeEnvs.map((env) => {
+      const covered = runs.filter((run) => run.env === env.id).reduce((sum, run) => sum + run.machineCount, 0);
+      runs.push({
+        recipeId: `env:${env.id}`,
+        itemId: env.gas,
+        machineId: env.machine,
+        machines: 1,
+        machineCount: 1,
+        rate: env.rate_per_sec,
+        perMachineRate: env.rate_per_sec,
+        portLimited: false,
+        disposal: false,
+        environment: env.id,
+        env: "",
+        inputs: [{ item: env.gas, rate: env.rate_per_sec }],
+        outputs: []
+      });
+      warnings.push({ code: "env_used", envId: env.id, itemId: env.gas, rate: env.rate_per_sec, machines: covered });
+      return { id: env.id, gas: env.gas, rate: env.rate_per_sec, machines: covered };
+    });
+
     const rawUsage = {};
     model.supplyIds.forEach((id, i) => {
-      const used = clean(x[result.colSupply(i)]);
+      const used = clean(x[best.colSupply(i)]);
       if (used > 0) rawUsage[id] = used;
     });
 
     const surplus = [];
-    for (const id of itemIds) {
-      const rate = clean(x[result.surplusCol[id]]);
+    for (const id of model.itemIds) {
+      const rate = clean(x[best.surplusCol[id]]);
       if (rate <= 0) continue;
       const fluid = isFluid(itemMap[id]);
       surplus.push({ itemId: id, rate, fluid });
       if (fluid) warnings.push({ code: "fluid_surplus", itemId: id, rate });
     }
 
-    return { outputs, runs, rawUsage, surplus, warnings, machineMap };
+    return { outputs, runs, rawUsage, surplus, environments, warnings, machineMap };
   }
 
   return { solve, cycleRate, collectRecipes, Tableau };

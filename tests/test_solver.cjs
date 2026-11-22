@@ -9,7 +9,7 @@ const config = path.join(__dirname, "..", "config");
 const itemsData = JSON.parse(fs.readFileSync(path.join(config, "items.json"), "utf8"));
 const machines = JSON.parse(fs.readFileSync(path.join(config, "machines.json"), "utf8")).machines;
 
-function solve(targets, suppliesPerMin = {}, machineLimits = {}, objective = "machines") {
+function solve(targets, suppliesPerMin = {}, machineLimits = {}, objective = "machines", extra = {}) {
   const supplies = {};
   for (const item of itemsData.items) {
     if (!item.map_only || item.startup_only) continue;
@@ -21,10 +21,12 @@ function solve(targets, suppliesPerMin = {}, machineLimits = {}, objective = "ma
     disposal: itemsData.disposal,
     machines,
     logistics: itemsData.logistics,
+    environments: itemsData.environments,
     supplies,
     machineLimits,
     targets,
-    objective
+    objective,
+    ...extra
   });
 }
 
@@ -104,9 +106,31 @@ test("mixing recipes beats any single coupon route", () => {
       disposal: itemsData.disposal,
       machines,
       logistics: itemsData.logistics,
+      environments: itemsData.environments,
       supplies: Object.fromEntries(Object.entries(supplies).map(([id, value]) => [id, value / 60])),
       targets: [{ itemId: "tundra_coupon", maximize: true }]
     }).outputs[0].rate;
     assert.ok(mixed >= single - 1e-6, `${recipe.id}: ${single} > ${mixed}`);
+  }
+});
+
+test("gas environments charge one diffuser and are skipped when the gas is missing", () => {
+  const target = [{ itemId: "xiranite_powder", rate: 30 / 60 }];
+  // Without xiranite gas the choice is carbon + stable environment, or twice the enriched carbon.
+  const noXiraniteGas = { gas_xiranite: 1e-6 };
+  const withGas = solve(target, noXiraniteGas);
+  assert.deepStrictEqual(withGas.environments.map((env) => env.id), ["gas_inert"]);
+  close(withGas.rawUsage.gas_inert * 60, 6, "diffuser feed per minute");
+  assert.ok(withGas.runs.some((run) => run.environment === "gas_inert" && run.machineId === "vaporizer_1"));
+  assertBalanced(withGas, noXiraniteGas);
+
+  const withoutGas = [
+    solve(target, { ...noXiraniteGas, gas_inert: 3 }),
+    solve(target, noXiraniteGas, {}, "machines", { disabledEnvs: ["gas_inert"] })
+  ];
+  for (const result of withoutGas) {
+    assert.deepStrictEqual(result.environments, []);
+    assert.ok(!result.runs.some((run) => run.env), "no environment recipe without a diffuser");
+    close(result.outputs[0].rate * 60, 30, "still produced by the non-environment recipe");
   }
 });

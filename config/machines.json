@@ -609,6 +609,26 @@
       "allowed_categories": [],
       "allowed_items": [],
       "icon": "https://placehold.co/64x64/a3a499/ffffff?text=XIRA"
+    },
+    {
+      "id": "vaporizer_1",
+      "name": "Gas Dispersing Unit",
+      "name_zh": "气体散布机",
+      "category": "machine",
+      "input_ports": 0,
+      "output_ports": 0,
+      "pipe_input_ports": 1,
+      "pipe_output_ports": 0,
+      "power": 0,
+      "size": [
+        3,
+        3
+      ],
+      "kit_size": 9,
+      "environment": true,
+      "allowed_categories": [],
+      "allowed_items": [],
+      "icon": "https://placehold.co/64x64/4b5563/ffffff?text=VAPO"
     }
   ]
 }

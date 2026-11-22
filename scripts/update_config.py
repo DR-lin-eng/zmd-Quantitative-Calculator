@@ -31,6 +31,7 @@ AKE_TABLES = [
     "FactoryMachineCraftTable.json",
     "FactoryBuildingTable.json",
     "FactoryItemTable.json",
+    "FactoryVaporizerTable.json",
     "ItemTable.json",
     "I18nTextTable_CN.json",
     "I18nTextTable_EN.json",
@@ -56,6 +57,14 @@ ALT_MACHINES = {"phase_trans_1", "phase_trans_2", "liquid_recycle_gate"}
 BELT_SPEED = 0.5
 PIPE_SPEED = 2
 PHASES = {1: "solid", 2: "liquid", 4: "gas"}
+# Gas diffuser: FactoryVaporizerTable.consumeRate is the minimum feed, read as units per minute.
+DIFFUSER_ID = "vaporizer_1"
+ENV_NAMES = {
+    "gas_inert": ("Stable Environment", "稳定环境"),
+    "gas_acid": ("Acidic Environment", "酸性环境"),
+    "gas_water": ("Humid Environment", "水汽环境"),
+    "gas_xiranite": ("Xiranite Environment", "息壤环境"),
+}
 
 
 def fetch(url: str, dest: Path, offline: bool) -> Path:
@@ -149,6 +158,7 @@ def main() -> None:
     craft_base = ake_table(base, "FactoryMachineCraftTable.json") if base else craft_latest
     buildings = ake_table(latest, "FactoryBuildingTable.json")
     factory_items = ake_table(latest, "FactoryItemTable.json")
+    vaporizer = ake_table(latest, "FactoryVaporizerTable.json").get(DIFFUSER_ID, {})
     item_table = ake_table(latest, "ItemTable.json")
     text_cn = ake_table(latest, "I18nTextTable_CN.json")
     text_en = ake_table(latest, "I18nTextTable_EN.json")
@@ -160,6 +170,19 @@ def main() -> None:
     icon_colors = {icon["id"]: icon.get("color", "#4b5563") for icon in data.get("icons", [])}
     up_items = {item["id"]: item for item in data["items"]}
     machine_ids = {i for i, item in up_items.items() if item.get("category") == "machine"}
+
+    # Some recipes only run inside a gas environment made by a diffuser; the curated data drops that.
+    env_gas = {g["genEnv"]: g["consumeItem"][5:] for g in vaporizer.get("groups", [])}
+    env_rate = {g["consumeItem"][5:]: g["consumeRate"] / 60 for g in vaporizer.get("groups", [])}
+
+    def signature(machine: str, ins: dict, outs: dict):
+        return (machine, tuple(sorted(ins.items())), tuple(sorted(outs.items())))
+
+    env_by_signature = {}
+    for r in craft_latest.values():
+        if r.get("gasEnv") in env_gas:
+            machine = MACHINE_ALIASES.get(r["machineId"], r["machineId"])
+            env_by_signature[signature(machine, ake_io(r["ingredients"]), ake_io(r["outcomes"]))] = env_gas[r["gasEnv"]]
 
     # ---- recipes: curated base + newer AKEData additions ---------------
     recipes = []  # {id, name_zh, in, out, time, producers, locations, group}
@@ -262,6 +285,9 @@ def main() -> None:
                 entry["byproducts"] = byproducts
             if r["locations"]:
                 entry["locations"] = r["locations"]
+            env = env_by_signature.get(signature(machine, r["in"], r["out"]))
+            if env:
+                entry["env"] = env
             if index > 0 or machine in ALT_MACHINES or cyclic or primary in mining_outputs:
                 entry["alt"] = True
             recipes_by_item.setdefault(primary, []).append(entry)
@@ -326,6 +352,33 @@ def main() -> None:
             "icon": make_icon(icon_colors.get(src.get("icon", machine_id), "#4b5563"), machine_id),
         })
 
+    used_envs = sorted({r["env"] for rs in recipes_by_item.values() for r in rs if r.get("env")})
+    environments = [{
+        "id": gas,
+        "name": ENV_NAMES.get(gas, (title_from_id(gas), gas))[0],
+        "name_zh": ENV_NAMES.get(gas, (title_from_id(gas), gas))[1],
+        "gas": gas,
+        "rate_per_sec": env_rate[gas],
+        "machine": DIFFUSER_ID,
+    } for gas in used_envs]
+    if environments and DIFFUSER_ID in buildings:
+        building = buildings[DIFFUSER_ID]
+        size = [building["range"]["width"], building["range"]["depth"]]
+        machines_out.append({
+            "id": DIFFUSER_ID,
+            "name": ake_name(buildings, DIFFUSER_ID, text_en) or "Gas Diffuser",
+            "name_zh": ake_name(buildings, DIFFUSER_ID, text_cn) or "气体散布机",
+            "category": "machine",
+            "input_ports": 0, "output_ports": 0, "pipe_input_ports": 1, "pipe_output_ports": 0,
+            "power": building.get("powerConsume", 0),
+            "size": size,
+            "kit_size": size[0] * size[1],
+            "environment": True,
+            "allowed_categories": [],
+            "allowed_items": [],
+            "icon": make_icon("#4b5563", DIFFUSER_ID),
+        })
+
     meta = {
         "game_version": latest["gameVersion"],
         "data_version": latest["id"],
@@ -338,7 +391,8 @@ def main() -> None:
     OUT_DIR.mkdir(exist_ok=True)
     dump = lambda name, payload: (OUT_DIR / name).write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    dump("items.json", {"version": 2, **meta, "logistics": logistics, "items": items_out, "disposal": disposal})
+    dump("items.json", {"version": 2, **meta, "logistics": logistics, "environments": environments,
+                        "items": items_out, "disposal": disposal})
     dump("machines.json", {"version": 2, "machines": machines_out})
     dump("generators.json", {"version": 2, "generators": generators_out})
 
